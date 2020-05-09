@@ -107,14 +107,6 @@ static const char *index_html PROGMEM = R"--espform--(
 
     This text box value show millis() value from device.<br/>
     <input type="text" id="text2"><br/><br/>
-
-    <script>
-
-      function setValue(id, value){
-        document.getElementById(id).value = value;
-      }
-
-    </script>
 </body>
 
 </html>
@@ -134,7 +126,6 @@ void formElementEventCallback(HTMLElementItem element)
   Serial.println("event: " + ESPForm.getElementEventString(element.event));
   Serial.println("***********************************");
   Serial.println();
-
 }
 
 void serverTimeoutCallback()
@@ -167,7 +158,6 @@ void setup()
   Serial.println(WiFi.localIP());
   Serial.println();
 
-
   //Add the html contents (in html.h) for the web page rendering
   ESPForm.addFileData(index_html, "index.html");
 
@@ -195,11 +185,12 @@ void loop()
     if (millis() - prevMillis > 1000)
     {
       prevMillis = millis();
-
-      ESPForm.runScript("setValue('text2'," + String(millis()) + ")");
+      //The event listener for text2 is not set because we don't want to listen to its value changes
+      ESPForm.setElementContent("text2", String(millis()));
     }
   }
 }
+
 
 ```
 
