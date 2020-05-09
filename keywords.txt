@@ -1,0 +1,40 @@
+######################################
+# Syntax Coloring Map ESPForm
+######################################
+
+#######################################
+# Classes (KEYWORD1)
+#######################################
+
+ESPForm KEYWORD1
+
+###############################################
+# Methods and Functions for ESPForm (KEYWORD2)
+###############################################
+
+getFileCount    KEYWORD2
+deleteAllFiles  KEYWORD2
+addFileData KEYWORD2
+addFile KEYWORD2
+runScript   KEYWORD2
+setAP   KEYWORD2
+setIP   KEYWORD2
+startServer KEYWORD2
+stopServer  KEYWORD2
+begin   KEYWORD2
+addElementEventListener KEYWORD2
+
+#######################################
+# Struct (LITERAL1)
+#######################################
+
+ElementEventCallback    LITERAL1
+IdleTimeoutCallback LITERAL1
+ESPFormEventType    LITERAL1
+ESPFormStorageType  LITERAL1
+HTMLElementItem LITERAL1
+EncriptionType  LITERAL1
+WiFiInfo    LITERAL1
+IdleTimeout_t   LITERAL1
+file_content_info_t LITERAL1
+NetworkInfo LITERAL1
