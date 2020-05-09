@@ -3,7 +3,7 @@
 
 The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
 
-The library allows user to send and receive the HTML form elements to/from device (ESP32/ESP8266).
+The library allows user to send and receive the HTML form elements data to/from device (ESP32/ESP8266).
 
 The supported HTML Form Elements are input, select, option, textarea, radio, checkbox and button.
 
@@ -17,6 +17,14 @@ The supported devices are Espressif's ESP32 and ESP8266 MCUs.
 * **WiFi Config and Device Setup Captive Portal**
 
 * **Web UI control and display.**
+
+
+
+
+## Supported Devices
+
+ * ESP32 MCU
+ * ESP8266 MCU
 
 
 
@@ -51,11 +59,21 @@ To stop the web server, calling **`ESPForm.stopServer`**.
 
 To control or send data to the client's web browser, using **`ESPForm.runScript`**.
 
-To send the data from client to device using the javascript, calling the function **`sendMessage`** with the arguments type, id, value and event.  The event data from HTML Form Element will send to device (server) with this sendMessage function. 
+To send the data from client to device using the javascript, calling the function **`sendMessage`** with the arguments type, id, value and event.  
+
+The event data from HTML Form Element will send to device (server) with this sendMessage function. 
 
 The event callback function on the device (sever) will receive this HTML Form Element's event data as **HTMLElementItem** type data.
 
-The **HTMLElementItem** data comprises of **id**, **value**, **type** and **event** properties. The id property is the HTML Form Element id attribute. The value property is the HTML Form Element value or innerText attribute. The type is the types of data e.g event (HTML Form Element event trigged) and get (device requests the value from HTML Form Element). The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick. The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1. 
+The **HTMLElementItem** data comprises of **id**, **value**, **type** and **event** properties. 
+
+The id property is the HTML Form Element id attribute. The value property is the HTML Form Element value or innerText attribute. 
+
+The type is the types of data e.g event (HTML Form Element event trigged) and get (device requests the value from HTML Form Element). 
+
+The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick. 
+
+The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1. 
 
 
 The following are the basic example to get and send data to text box of HTML document.
@@ -70,8 +88,8 @@ The following are the basic example to get and send data to text box of HTML doc
 #include <ESPForm.h>
 
 //Your WiFi SSID and Password
-#define WIFI_SSID "@100"
-#define WIFI_PASSWORD "39013145"
+#define WIFI_SSID "Your_WiFi_SSID"
+#define WIFI_PASSWORD "Your_WiFi_Password"
 
 //Raw content of index.html in plain text
 static const char *index_html PROGMEM = R"--espform--(
