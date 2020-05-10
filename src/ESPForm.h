@@ -70,10 +70,10 @@
 #include <vector>
 #include <DNSServer.h>
 #include "WebSockets/WebSocketsServer.h"
-#include "FirebaseJson/FirebaseJson.h"
+#include "Json/ESPJson.h"
 #include "MIMEInfo.h"
 
-static const char ESPFORM_STR_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
+        static const char ESPFORM_STR_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
 static const char ESPFORM_STR_2[] PROGMEM = "task";
 static const char ESPFORM_STR_3[] PROGMEM = "_ref";
 static const char ESPFORM_STR_4[] PROGMEM = "ESPForm";
@@ -623,6 +623,12 @@ public:
 
     /*
     
+    Terminate the web server and free resources.
+    */
+    void terminateServer();
+
+    /*
+    
     Get the number of HTML resource files and data (.html, .css, .js...) added for webpage rendering .
 
     @return - The number or resources that added and use for webpage.
@@ -874,7 +880,7 @@ public:
    */
     bool setClock(float offset);
 
-    
+
 #if defined(ESP32)
     /*
   
@@ -964,7 +970,7 @@ private:
     const byte dnsPort = 53;
     const byte webServerPort = 80;
     const byte webSocketPort = 81;
-    std::shared_ptr<FirebaseJsonArray> _config = std::shared_ptr<FirebaseJsonArray>(new FirebaseJsonArray());
+    std::shared_ptr<ESPJsonArray> _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
     std::vector<file_content_info_t> _file_info = std::vector<file_content_info_t>();
     ElementEventCallback _elementEventCallback = nullptr;
 

@@ -64,12 +64,20 @@ ESPFormClass::ESPFormClass()
 
 ESPFormClass::~ESPFormClass()
 {
+    terminateServer();
+}
+
+void ESPFormClass::terminateServer()
+{
+
+    _config->clear();
     _config.reset();
     _config = nullptr;
     _webSocketPtr.reset();
     _webSocketPtr = nullptr;
     _webServerPtr.reset();
     _webServerPtr = nullptr;
+    _file_info.clear();
 #if defined(ESP8266)
     _dnsServerPtr.reset();
     _dnsServerPtr = nullptr;
@@ -154,7 +162,7 @@ void ESPFormClass::setAP(const char *ssid, const char *psw, int channel, int ssi
             _apSSID = _buf;
             delPtr(_buf);
 #endif
-           
+
             break;
         }
     }
@@ -179,7 +187,7 @@ void ESPFormClass::begin(ElementEventCallback eventCallback, IdleTimeoutCallback
 
 void ESPFormClass::addElementEventListener(const String &id, ESPFormEventType event, const char *defaultValue)
 {
-    FirebaseJson json;
+    ESPJson json;
     std::string s;
     p_memCopy(s, ESPFORM_STR_16);
     json.add(s.c_str(), id);
@@ -199,7 +207,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
     if (_config->size() == 0)
         return;
 
-    FirebaseJson json;
+    ESPJson json;
     std::string s;
     p_memCopy(s, ESPFORM_STR_23);
     json.add(s.c_str(), *_config);
@@ -249,7 +257,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
 
 void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorageType storagetype)
 {
-    FirebaseJson js;
+    ESPJson js;
 
 #ifdef ESP32
     if (storagetype == ESPFormStorage_SPIFFS)
@@ -291,7 +299,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
     }
 #endif
 
-    FirebaseJsonData d;
+    ESPJsonData d;
     std::string s;
     p_memCopy(s, ESPFORM_STR_13);
     p_memCopy(s, ESPFORM_STR_23);
@@ -300,7 +308,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
     {
         _config.reset();
         _config = nullptr;
-        _config = std::shared_ptr<FirebaseJsonArray>(new FirebaseJsonArray());
+        _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
         d.getArray(*_config);
     }
 }
@@ -308,7 +316,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
 HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
 {
 
-    FirebaseJsonData jsonData;
+    ESPJsonData jsonData;
     bool res = false;
     std::string s;
     HTMLElementItem element;
@@ -349,7 +357,7 @@ HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
 void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 {
 
-    FirebaseJsonData jsonData;
+    ESPJsonData jsonData;
     std::string s;
 
     for (size_t k = 0; k < _config->size(); k++)
@@ -376,7 +384,7 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 
 void ESPFormClass::removeElementEventConfigItem(const String &id)
 {
-    FirebaseJsonData jsonData;
+    ESPJsonData jsonData;
     std::string s;
 
     for (size_t k = 0; k < _config->size(); k++)
@@ -824,7 +832,7 @@ bool ESPFormClass::handleFileRead()
     else if (strcmp(path.c_str(), s5.c_str()) == 0)
     {
         String ap = "";
-        FirebaseJsonData jsonData;
+        ESPJsonData jsonData;
         String id;
         int event = 0;
         String value;
@@ -851,7 +859,7 @@ bool ESPFormClass::handleFileRead()
             if (jsonData.success)
                 value = jsonData.stringValue;
 
-            if (value.length() > 0 && jsonData.typeNum != JSON_NULL)
+            if (value.length() > 0 && jsonData.typeNum != ESPJson::JSON_NULL)
                 ap += s2.c_str() + id + s3.c_str() + value + s4.c_str();
 
             char *a = getIntString(event);
@@ -886,8 +894,8 @@ bool ESPFormClass::handleFileRead()
                 {
                     getMIME(ext, mime);
 
-                    FirebaseJson js;
-                    FirebaseJsonData d;
+                    ESPJson js;
+                    ESPJsonData d;
 #ifdef ESP32
                     if (_file_info[i].storageType == ESPFormStorage_SPIFFS)
                     {
@@ -1077,8 +1085,8 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
         break;
     case WStype_TEXT:
 
-        FirebaseJson json;
-        FirebaseJsonData jsonData;
+        ESPJson json;
+        ESPJsonData jsonData;
         json.setJsonData((char *)payload);
         String type, id, value;
         uint8_t event = 0;
