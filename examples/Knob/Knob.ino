@@ -171,7 +171,7 @@ void loop()
       ESPForm.setElementContent("knob1", "50");
 
       //Save config
-      ESPForm.saveElementEventConfig("/test.json", ESPFormStorage_SPIFFS);
+      ESPForm.saveElementEventConfig("/knob-test.json", ESPFormStorage_SPIFFS);
     }
   }
 }
