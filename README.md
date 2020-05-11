@@ -1,4 +1,4 @@
-# The ESPForm for Arduino v 1.0.0
+# The ESPForm for Arduino v 1.0.1
 
 
 The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
@@ -78,6 +78,10 @@ The event property value is the number of ESPFormEventType enumeration e.g. **EV
 
 The following are the basic example to get and send data to text box of HTML document.
 
+### Example Screenshot
+
+![WiFi Example Screenshot](/src/media/basic_screenshot.png)
+
 
 ```C++
 
@@ -92,7 +96,9 @@ The following are the basic example to get and send data to text box of HTML doc
 #define WIFI_PASSWORD "Your_WiFi_Password"
 
 //Raw content of index.html in plain text
-static const char *index_html PROGMEM = R"--espform--(
+//This raw string used for presentation only
+//which should use uint8_t array in PROGMEM instead to save ram.
+static const char *index_html = R"--espform--(
   
 <html lang="en">
 <head>
@@ -197,7 +203,25 @@ void loop()
 ## Examples
 
 
-See [Full Examples](/examples) for the other usages.
+See [Full Examples](/examples) for the usages, below are the screenshots of these examples.
+
+
+### The Knob Example Screenshot
+
+![Knob Example Screenshot](/src/media/knob_screenshot.png)
+
+
+
+### The Chart Example Screenshot
+
+![Chrt Example Screenshot](/src/media/chart_screenshot.png)
+
+
+
+### The WiFi Example Screenshot
+
+![WiFi Example Screenshot](/src/media/wifi_screenshot.png)
+
 
 
 ## License

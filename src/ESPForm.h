@@ -1,7 +1,7 @@
 /*
- * The ESPForm for Arduino v 1.0.0
+ * The ESPForm for Arduino v 1.0.1
  * 
- * May 10, 2020
+ * May 11, 2020
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -942,6 +942,7 @@ private:
     void p_memCopy(std::string &buf, PGM_P p, bool empty = false);
     uint8_t getRSSIasQuality(int RSSI);
     bool reconnect();
+    void prepareConfig();
 
     IPAddress _ip;
     IPAddress _gateway;

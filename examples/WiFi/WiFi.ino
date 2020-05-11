@@ -11,8 +11,6 @@
 //For HTML content
 #include "html.h"
 
-
-
 #if defined(ESP32)
 WiFiMulti wifiMulti;
 #elif defined(ESP8266)
@@ -29,6 +27,13 @@ String apPSW = "12345678";
 //Timeout for WiFi and AP connection
 unsigned long wifiTimeout = 60 * 1000;
 unsigned long serverTimeout = 2 * 60 * 1000;
+
+
+unsigned long sendDataPrevMillis = 0;
+
+String path = "/Test/Stream";
+
+uint16_t count = 0;
 
 //Function constructors
 bool startWiFi();
@@ -53,21 +58,33 @@ void setup()
     WiFi.disconnect(true);
     WiFi.persistent(false);
 
-    setupESPForm();
+    Serial.println(ESP.getFreeHeap());
 
     if (loadConfig())
     {
+        Serial.println(ESP.getFreeHeap());
         if (!startWiFi())
         {
+            setupESPForm();
+
             Serial.println("MAIN:  Start server");
             ESPForm.startServer();
+            return;
         }
     }
     else
     {
         Serial.println("MAIN:  Start server");
         ESPForm.startServer();
+        return;
     }
+
+    //WiFi connection successful
+
+    //Free the sesources to gain memory, to start the server again (all HTML resources and event should be reloaded)
+    //ESPForm.terminateServer();
+
+    Serial.println(ESP.getFreeHeap());
 }
 
 void loop()
@@ -105,6 +122,7 @@ bool startWiFi()
     }
     else
     {
+        Serial.println();
         Serial.println("MAIN:  WiFi connection failed!");
         return false;
     }
@@ -185,21 +203,25 @@ void setupESPForm()
 
     //Prepare html contents (in html.h) for the web page rendering (only once)
 
-    //SPIFFS's char array, file name
-    ESPForm.addFileData(index_html, "index.html");
-    ESPForm.addFileData(main_js, "main.js");
-
     //SPIFFS's uint8_t array, file name, size of array, gzip compression
-    ESPForm.addFileData(bootstrap_css, "bootstrap.min.css", sizeof(bootstrap_css), true);
-    ESPForm.addFileData(signs_png, "signs.png", sizeof(signs_png), false);
-    ESPForm.addFileData(shield_png, "shield.png", sizeof(shield_png), false);
-    ESPForm.addFileData(wifi0_png, "wifi0.png", sizeof(wifi0_png), false);
-    ESPForm.addFileData(wifi25_png, "wifi25.png", sizeof(wifi25_png), false);
-    ESPForm.addFileData(wifi50_png, "wifi50.png", sizeof(wifi50_png), false);
-    ESPForm.addFileData(wifi75_png, "wifi75.png", sizeof(wifi75_png), false);
 
-    //Can also add Flash or SD file
-    //ESPForm.addFile("reload.png", "/reload.png", ESPFormStorage_SPIFFS);
+    if (ESPForm.getFileCount() == 0)
+    {
+
+        ESPForm.addFileData(index_html_gz, "index.html", sizeof(index_html_gz), true);
+        ESPForm.addFileData(main_js_gz, "main.js", sizeof(main_js_gz), true);
+
+        ESPForm.addFileData(bootstrap_css, "bootstrap.min.css", sizeof(bootstrap_css), true);
+        ESPForm.addFileData(signs_png, "signs.png", sizeof(signs_png), false);
+        ESPForm.addFileData(shield_png, "shield.png", sizeof(shield_png), false);
+        ESPForm.addFileData(wifi0_png, "wifi0.png", sizeof(wifi0_png), false);
+        ESPForm.addFileData(wifi25_png, "wifi25.png", sizeof(wifi25_png), false);
+        ESPForm.addFileData(wifi50_png, "wifi50.png", sizeof(wifi50_png), false);
+        ESPForm.addFileData(wifi75_png, "wifi75.png", sizeof(wifi75_png), false);
+
+        //Can also add Flash or SD file
+        //ESPForm.addFile("reload.png", "/reload.png", ESPFormStorage_SPIFFS);
+    }
 
     ESPForm.begin(formElementEventCallback, serverTimeoutCallback, serverTimeout, true);
 }

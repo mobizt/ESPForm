@@ -142,7 +142,7 @@ class WebSocketsServer : protected WebSockets {
          * @param client WSclient_t *  ptr to the client struct
          */
     virtual void handleNonWebsocketConnection(WSclient_t * client) {
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] no Websocket connection close.\n", client->num);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] no Websocket connection close.\n", client->num);
         client->tcp->write(
             "HTTP/1.1 400 Bad Request\r\n"
             "Server: arduino-WebSocket-Server\r\n"

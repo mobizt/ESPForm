@@ -1,7 +1,7 @@
 /*
- * The ESPForm for Arduino v 1.0.0
+ * The ESPForm for Arduino v 1.0.1
  * 
- * May 10, 2020
+ * May 11, 2020
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -69,18 +69,27 @@ ESPFormClass::~ESPFormClass()
 
 void ESPFormClass::terminateServer()
 {
-
-    _config->clear();
-    _config.reset();
-    _config = nullptr;
-    _webSocketPtr.reset();
-    _webSocketPtr = nullptr;
-    _webServerPtr.reset();
-    _webServerPtr = nullptr;
+    stopServer();
+    if (_config)
+    {
+        _config->clear();
+        _config.reset();
+        _config = nullptr;
+    }
+    if (_webSocketPtr)
+    {
+        _webSocketPtr.reset();
+        _webSocketPtr = nullptr;
+        _webServerPtr.reset();
+        _webServerPtr = nullptr;
+    }
     _file_info.clear();
 #if defined(ESP8266)
-    _dnsServerPtr.reset();
-    _dnsServerPtr = nullptr;
+    if (_dnsServerPtr)
+    {
+        _dnsServerPtr.reset();
+        _dnsServerPtr = nullptr;
+    }
 #endif
 }
 
@@ -172,6 +181,7 @@ void ESPFormClass::setAP(const char *ssid, const char *psw, int channel, int ssi
 
 void ESPFormClass::begin(ElementEventCallback eventCallback, IdleTimeoutCallback timeoutCallback, unsigned long timeout, bool debug)
 {
+
     _debug = debug;
     _elementEventCallback = std::move(eventCallback);
     _idle_to._idleTimeoutCallback = std::move(timeoutCallback);
@@ -187,6 +197,8 @@ void ESPFormClass::begin(ElementEventCallback eventCallback, IdleTimeoutCallback
 
 void ESPFormClass::addElementEventListener(const String &id, ESPFormEventType event, const char *defaultValue)
 {
+    prepareConfig();
+
     ESPJson json;
     std::string s;
     p_memCopy(s, ESPFORM_STR_16);
@@ -203,6 +215,7 @@ void ESPFormClass::addElementEventListener(const String &id, ESPFormEventType ev
 
 void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorageType storagetype)
 {
+    prepareConfig();
 
     if (_config->size() == 0)
         return;
@@ -321,6 +334,8 @@ HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
     std::string s;
     HTMLElementItem element;
 
+    prepareConfig();
+
     for (size_t k = 0; k < _config->size(); k++)
     {
         getPath(0, k, s);
@@ -360,6 +375,8 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
     ESPJsonData jsonData;
     std::string s;
 
+    prepareConfig();
+
     for (size_t k = 0; k < _config->size(); k++)
     {
         getPath(0, k, s);
@@ -387,6 +404,8 @@ void ESPFormClass::removeElementEventConfigItem(const String &id)
     ESPJsonData jsonData;
     std::string s;
 
+    prepareConfig();
+
     for (size_t k = 0; k < _config->size(); k++)
     {
         getPath(0, k, s);
@@ -404,7 +423,14 @@ void ESPFormClass::removeElementEventConfigItem(const String &id)
 
 void ESPFormClass::clearElementEventConfig()
 {
+    prepareConfig();
     _config->clear();
+}
+
+void ESPFormClass::prepareConfig()
+{
+    if (!_config)
+        _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
 }
 
 String ESPFormClass::getElementEventString(ESPFormEventType event)
@@ -633,6 +659,7 @@ void ESPFormClass::stopServer()
 
 void ESPFormClass::startServer()
 {
+
     if (!_apStarted && _apSSID.length() > 0 && _apSSID.length() < 32 && _apPSW.length() >= 8 && _apPSW.length() < 64)
     {
         startAP();
@@ -774,6 +801,8 @@ bool ESPFormClass::handleFileRead()
     p_memCopy(s1, ESPFORM_STR_13);
     p_memCopy(s2, ESPFORM_STR_12);
     String path = _webServerPtr->uri();
+
+    prepareConfig();
 
     if (path.endsWith(s1.c_str()))
         path += s2.c_str();
@@ -963,25 +992,20 @@ bool ESPFormClass::handleFileRead()
                     p_memCopy(s3, ESPFORM_STR_28, true);
                     if (strcmp(ext.c_str(), s3.c_str()) == 0)
                     {
-                        if (_file_info[i].gzip)
+
+                        if (!_webServerPtr->hasArg("espf"))
                         {
                             _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-                            _webServerPtr->send_P(200, MIMEInfo[html].mimeType, _file_info[i].content, strlen(_file_info[i].content));
+                            _webServerPtr->send_P(200, MIMEInfo[html].mimeType, (const char *)loader_html_gz, sizeof(loader_html_gz));
                         }
                         else
                         {
-                            if (!_webServerPtr->hasArg("espf"))
-                            {
+                            if (_file_info[i].gzip)
                                 _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-                                _webServerPtr->send_P(200, MIMEInfo[html].mimeType, (const char *)loader_html_gz, sizeof(loader_html_gz));
-                                res = true;
-                            }
-                            else
-                            {
-                                _webServerPtr->send_P(200, MIMEInfo[html].mimeType, _file_info[i].content, _file_info[i].len);
-                                res = true;
-                            }
+                            _webServerPtr->send_P(200, MIMEInfo[html].mimeType, _file_info[i].content, _file_info[i].len);
                         }
+
+                        res = true;
                     }
                     else
                     {
@@ -1467,6 +1491,7 @@ size_t ESPFormClass::getClientCount()
 
 size_t ESPFormClass::getElementCount()
 {
+    prepareConfig();
     return _config->size();
 }
 

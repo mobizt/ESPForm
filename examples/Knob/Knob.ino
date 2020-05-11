@@ -131,11 +131,9 @@ void setup()
 
   //Add the html contents (in html.h) for the web page rendering
 
-  //flash char array, file name
-  ESPForm.addFileData(index_html, "index.html");
-  ESPForm.addFileData(main_js, "main.js");
-
   //flash uint8_t array, file name, size of array, gzip compression
+  ESPForm.addFileData(index_html_gz, "index.html", sizeof(index_html_gz), true);
+  ESPForm.addFileData(main_js_gz, "main.js", sizeof(main_js_gz), true);
   ESPForm.addFileData(jquery_min_js_gz, "jquery.min.js", sizeof(jquery_min_js_gz), true);
   ESPForm.addFileData(jquery_knob_min_js_gz, "jquery.knob.min.js", sizeof(jquery_knob_min_js_gz), true);
 

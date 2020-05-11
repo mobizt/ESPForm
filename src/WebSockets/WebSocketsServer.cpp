@@ -113,7 +113,7 @@ void WebSocketsServer::begin(void) {
     _runnning = true;
     _server->begin();
 
-    DEBUG_WEBSOCKETS("[WS-Server] Server Started.\n");
+    //DEBUG_WEBSOCKETS("[WS-Server] Server Started.\n");
 }
 
 void WebSocketsServer::close(void) {
@@ -469,17 +469,17 @@ bool WebSocketsServer::newClient(WEBSOCKETS_NETWORK_CLASS * TCPclient) {
 #endif
             client->status = WSC_HEADER;
 #if(WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266) || (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266_ASYNC) || (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP32)
-#ifndef NODEBUG_WEBSOCKETS
+#ifndef NO//DEBUG_WEBSOCKETS
             IPAddress ip = client->tcp->remoteIP();
 #endif
-            DEBUG_WEBSOCKETS("[WS-Server][%d] new client from %d.%d.%d.%d\n", client->num, ip[0], ip[1], ip[2], ip[3]);
+            //DEBUG_WEBSOCKETS("[WS-Server][%d] new client from %d.%d.%d.%d\n", client->num, ip[0], ip[1], ip[2], ip[3]);
 #else
-            DEBUG_WEBSOCKETS("[WS-Server][%d] new client\n", client->num);
+            //DEBUG_WEBSOCKETS("[WS-Server][%d] new client\n", client->num);
 #endif
 
 #if(WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266_ASYNC)
             client->tcp->onDisconnect(std::bind([](WebSocketsServer * server, AsyncTCPbuffer * obj, WSclient_t * client) -> bool {
-                DEBUG_WEBSOCKETS("[WS-Server][%d] Disconnect client\n", client->num);
+                //DEBUG_WEBSOCKETS("[WS-Server][%d] Disconnect client\n", client->num);
 
                 AsyncTCPbuffer ** sl = &server->_clients[client->num].tcp;
                 if(*sl == obj) {
@@ -587,7 +587,7 @@ void WebSocketsServer::clientDisconnect(WSclient_t * client) {
 
     client->status = WSC_NOT_CONNECTED;
 
-    DEBUG_WEBSOCKETS("[WS-Server][%d] client disconnected.\n", client->num);
+    //DEBUG_WEBSOCKETS("[WS-Server][%d] client disconnected.\n", client->num);
 
     runCbEvent(client->num, WStype_DISCONNECTED, NULL, 0);
 }
@@ -609,7 +609,7 @@ bool WebSocketsServer::clientIsConnected(WSclient_t * client) {
     } else {
         // client lost
         if(client->status != WSC_NOT_CONNECTED) {
-            DEBUG_WEBSOCKETS("[WS-Server][%d] client connection lost.\n", client->num);
+            //DEBUG_WEBSOCKETS("[WS-Server][%d] client connection lost.\n", client->num);
             // do cleanup
             clientDisconnect(client);
         }
@@ -617,7 +617,7 @@ bool WebSocketsServer::clientIsConnected(WSclient_t * client) {
 
     if(client->tcp) {
         // do cleanup
-        DEBUG_WEBSOCKETS("[WS-Server][%d] client list cleanup.\n", client->num);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d] client list cleanup.\n", client->num);
         clientDisconnect(client);
     }
 
@@ -641,7 +641,7 @@ void WebSocketsServer::handleNewClients(void) {
 #endif
 
         if(!tcpClient) {
-            DEBUG_WEBSOCKETS("[WS-Client] creating Network class failed!");
+            //DEBUG_WEBSOCKETS("[WS-Client] creating Network class failed!");
             return;
         }
 
@@ -650,12 +650,12 @@ void WebSocketsServer::handleNewClients(void) {
         if(!ok) {
             // no free space to handle client
 #if(WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266) || (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP32)
-#ifndef NODEBUG_WEBSOCKETS
+#ifndef NO//DEBUG_WEBSOCKETS
             IPAddress ip = tcpClient->remoteIP();
 #endif
-            DEBUG_WEBSOCKETS("[WS-Server] no free space new client from %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
+            //DEBUG_WEBSOCKETS("[WS-Server] no free space new client from %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
 #else
-        DEBUG_WEBSOCKETS("[WS-Server] no free space new client\n");
+        //DEBUG_WEBSOCKETS("[WS-Server] no free space new client\n");
 #endif
             tcpClient->stop();
         }
@@ -676,7 +676,7 @@ void WebSocketsServer::handleClientData(void) {
         if(clientIsConnected(client)) {
             int len = client->tcp->available();
             if(len > 0) {
-                //DEBUG_WEBSOCKETS("[WS-Server][%d][handleClientData] len: %d\n", client->num, len);
+                ////DEBUG_WEBSOCKETS("[WS-Server][%d][handleClientData] len: %d\n", client->num, len);
                 switch(client->status) {
                     case WSC_HEADER: {
                         String headerLine = client->tcp->readStringUntil('\n');
@@ -724,7 +724,7 @@ void WebSocketsServer::handleHeader(WSclient_t * client, String * headerLine) {
     headerLine->trim();    // remove \r
 
     if(headerLine->length() > 0) {
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] RX: %s\n", client->num, headerLine->c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] RX: %s\n", client->num, headerLine->c_str());
 
         // websocket requests always start with GET see rfc6455
         if(headerLine->startsWith("GET ")) {
@@ -772,7 +772,7 @@ void WebSocketsServer::handleHeader(WSclient_t * client, String * headerLine) {
             }
 
         } else {
-            DEBUG_WEBSOCKETS("[WS-Client][handleHeader] Header error (%s)\n", headerLine->c_str());
+            //DEBUG_WEBSOCKETS("[WS-Client][handleHeader] Header error (%s)\n", headerLine->c_str());
         }
 
         (*headerLine) = "";
@@ -780,17 +780,17 @@ void WebSocketsServer::handleHeader(WSclient_t * client, String * headerLine) {
         client->tcp->readStringUntil('\n', &(client->cHttpLine), std::bind(&WebSocketsServer::handleHeader, this, client, &(client->cHttpLine)));
 #endif
     } else {
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] Header read fin.\n", client->num);
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cURL: %s\n", client->num, client->cUrl.c_str());
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cIsUpgrade: %d\n", client->num, client->cIsUpgrade);
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cIsWebsocket: %d\n", client->num, client->cIsWebsocket);
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cKey: %s\n", client->num, client->cKey.c_str());
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cProtocol: %s\n", client->num, client->cProtocol.c_str());
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cExtensions: %s\n", client->num, client->cExtensions.c_str());
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cVersion: %d\n", client->num, client->cVersion);
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - base64Authorization: %s\n", client->num, client->base64Authorization.c_str());
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cHttpHeadersValid: %d\n", client->num, client->cHttpHeadersValid);
-        DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cMandatoryHeadersCount: %d\n", client->num, client->cMandatoryHeadersCount);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] Header read fin.\n", client->num);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cURL: %s\n", client->num, client->cUrl.c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cIsUpgrade: %d\n", client->num, client->cIsUpgrade);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cIsWebsocket: %d\n", client->num, client->cIsWebsocket);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cKey: %s\n", client->num, client->cKey.c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cProtocol: %s\n", client->num, client->cProtocol.c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cExtensions: %s\n", client->num, client->cExtensions.c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cVersion: %d\n", client->num, client->cVersion);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - base64Authorization: %s\n", client->num, client->base64Authorization.c_str());
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cHttpHeadersValid: %d\n", client->num, client->cHttpHeadersValid);
+        //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - cMandatoryHeadersCount: %d\n", client->num, client->cMandatoryHeadersCount);
 
         bool ok = (client->cIsUpgrade && client->cIsWebsocket);
 
@@ -816,19 +816,19 @@ void WebSocketsServer::handleHeader(WSclient_t * client, String * headerLine) {
             String auth = WEBSOCKETS_STRING("Basic ");
             auth += _base64Authorization;
             if(auth != client->base64Authorization) {
-                DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] HTTP Authorization failed!\n", client->num);
+                //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] HTTP Authorization failed!\n", client->num);
                 handleAuthorizationFailed(client);
                 return;
             }
         }
 
         if(ok) {
-            DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] Websocket connection incoming.\n", client->num);
+            //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] Websocket connection incoming.\n", client->num);
 
             // generate Sec-WebSocket-Accept key
             String sKey = acceptKey(client->cKey);
 
-            DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - sKey: %s\n", client->num, sKey.c_str());
+            //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader]  - sKey: %s\n", client->num, sKey.c_str());
 
             client->status = WSC_CONNECTED;
 
@@ -854,7 +854,7 @@ void WebSocketsServer::handleHeader(WSclient_t * client, String * headerLine) {
             // header end
             handshake += NEW_LINE;
 
-            DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] handshake %s", client->num, (uint8_t *)handshake.c_str());
+            //DEBUG_WEBSOCKETS("[WS-Server][%d][handleHeader] handshake %s", client->num, (uint8_t *)handshake.c_str());
 
             write(client, (uint8_t *)handshake.c_str(), handshake.length());
 
@@ -879,7 +879,7 @@ void WebSocketsServer::handleHBPing(WSclient_t * client) {
         return;
     uint32_t pi = millis() - client->lastPing;
     if(pi > client->pingInterval) {
-    DEBUG_WEBSOCKETS("[WS-Server][%d] sending HB ping\n", client->num);
+    //DEBUG_WEBSOCKETS("[WS-Server][%d] sending HB ping\n", client->num);
         if(sendPing(client->num)) {
             client->lastPing     = millis();
             client->pongReceived = false;
