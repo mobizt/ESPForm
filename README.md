@@ -82,9 +82,7 @@ The following are the basic example to get and send data to text box of HTML doc
 
 ![WiFi Example Screenshot](/src/media/basic_screenshot.png)
 
-
 ```C++
-
 
 #include <ESP8266WiFi.h>
 //#include <WiFi.h> //ESP32
