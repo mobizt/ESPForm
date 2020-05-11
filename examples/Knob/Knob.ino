@@ -18,7 +18,7 @@
 
 //The AP
 String apSSID = "ESPForm";
-String apPSW = "39013145";
+String apPSW = "12345678";
 
 unsigned long prevMillis = 0;
 unsigned long serverTimeout = 2 * 60 * 1000;
@@ -145,11 +145,10 @@ void setup()
 
   ESPForm.startServer();
 
-  Serial.println();
   Serial.println("***********************************");
-  Serial.println("Now go to " + WiFi.localIP().toString());
-  Serial.println("Or join the AP " + WiFi.softAPSSID() + " with password " + WiFi.softAPPSK());
-  Serial.println("And go to " + WiFi.softAPIP().toString());
+  Serial.println("Use web browser and navigate to " + WiFi.localIP().toString());
+  Serial.println("Or join the AP " + WiFi.softAPSSID() + " and password " + WiFi.softAPPSK());
+  Serial.println("then navigate to " + WiFi.softAPIP().toString());
   Serial.println("***********************************");
   Serial.println();
 }
