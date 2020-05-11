@@ -80,7 +80,7 @@ The following are the basic example to get and send data to text box of HTML doc
 
 ### Example Screenshot
 
-![WiFi Example Screenshot](/src/media/basic_screenshot.png)
+![Basic Example Screenshot](/src/media/basic_screenshot.png)
 
 ```C++
 
