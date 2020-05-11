@@ -688,6 +688,8 @@ void ESPFormClass::startAP()
             return;
         }
     }
+    
+    WiFi.enableAP(true);
 
     if (WiFi.softAP(_apSSID.c_str(), _apPSW.c_str(), _channel, _ssid_hidden, _max_connection))
     {
