@@ -1,0 +1,12 @@
+{
+    "name": "ESPForm for Arduino",
+    "keywords": "WiFi, espp8266, esp32, captive portal, web form, AP portal",
+    "description": "The simple HTML Form Elements data interchanges library for ESP32/ESP8266 through the Webserver. The library allows user to send and receive the HTML Form Elements (input, select, textarea, radio, checkbox and button) to/from device (ESP32/ESP8266) based on the events.",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mobizt/ESPForm"
+    },
+    "frameworks": "arduino",
+    "platforms": "esp32, esp8266",
+    "version": "1.0.1"
+}

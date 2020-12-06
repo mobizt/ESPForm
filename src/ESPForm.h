@@ -73,7 +73,7 @@
 #include "Json/ESPJson.h"
 #include "MIMEInfo.h"
 
-        static const char ESPFORM_STR_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
+static const char ESPFORM_STR_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
 static const char ESPFORM_STR_2[] PROGMEM = "task";
 static const char ESPFORM_STR_3[] PROGMEM = "_ref";
 static const char ESPFORM_STR_4[] PROGMEM = "ESPForm";

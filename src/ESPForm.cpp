@@ -688,7 +688,7 @@ void ESPFormClass::startAP()
             return;
         }
     }
-    
+
     WiFi.enableAP(true);
 
     if (WiFi.softAP(_apSSID.c_str(), _apPSW.c_str(), _channel, _ssid_hidden, _max_connection))
@@ -1057,7 +1057,6 @@ String ESPFormClass::toIpString(IPAddress ip)
 
 void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t lenght)
 {
-    String json = "";
     switch (type)
     {
     case WStype_ERROR:
