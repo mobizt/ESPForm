@@ -1,7 +1,11 @@
+#ifndef ESPFORM_VERSION
+#define ESPFORM_VERSION "1.0.2"
+#endif
+
 /*
- * The ESPForm for Arduino v 1.0.1
+ * The ESPForm for Arduino v 1.0.2
  * 
- * May 11, 2020
+ * May 25, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -17,9 +21,7 @@
  * This library based on the Wrbsocket library from Markus Sattler with some modification to proper working with BearSSL WiFi client for ESP8266.
  * 
  * The MIT License (MIT)
- * Copyright (c) 2020 K. Suwatchai (Mobizt)
- * 
- * Copyright (c) 2015 Markus Sattler. All rights reserved.
+ * Copyright (c) 2021 K. Suwatchai (Mobizt)
  * 
  * 
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -45,7 +47,7 @@
 #ifndef ESPFormClass_H
 #define ESPFormClass_H
 
-#include "debug.h"
+#include <debug.h>
 
 #ifdef ESP32
 #include <WiFi.h>
@@ -61,104 +63,124 @@
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include "Callback/Callback.h"
+#include <Schedule.h>
+#include <ets_sys.h>
 #define FS_NO_GLOBALS
 #include <FS.h>
+#define SD_CS_PIN 15
+#ifdef __GNUC__
+#if __GNUC__ > 4 || __GNUC__ == 10
+#include <string>
+#ifndef ESP8266_CORE_SDK_V3_X_X
+#define ESP8266_CORE_SDK_V3_X_X
 #endif
+#endif
+#endif
+#endif
+
+#include "ESPFormFS.h"
 
 #include <SD.h>
 #include <vector>
 #include <DNSServer.h>
-#include "WebSockets/WebSocketsServer.h"
-#include "Json/ESPJson.h"
+#include "webSockets/WebSocketsServer.h"
+#include "json/FirebaseJson.h"
 #include "MIMEInfo.h"
 
-static const char ESPFORM_STR_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
-static const char ESPFORM_STR_2[] PROGMEM = "task";
-static const char ESPFORM_STR_3[] PROGMEM = "_ref";
-static const char ESPFORM_STR_4[] PROGMEM = "ESPForm";
-static const char ESPFORM_STR_5[] PROGMEM = "Location";
-static const char ESPFORM_STR_6[] PROGMEM = "http://";
-static const char ESPFORM_STR_7[] PROGMEM = "text/plain";
-static const char ESPFORM_STR_8[] PROGMEM = "Content-Encoding";
-static const char ESPFORM_STR_9[] PROGMEM = "gzip";
-static const char ESPFORM_STR_10[] PROGMEM = "Cache-Control";
-static const char ESPFORM_STR_11[] PROGMEM = "no-cache, no-store, must-revalidate";
-static const char ESPFORM_STR_12[] PROGMEM = "index.html";
-static const char ESPFORM_STR_13[] PROGMEM = "/";
-static const char ESPFORM_STR_14[] PROGMEM = "[";
-static const char ESPFORM_STR_15[] PROGMEM = "]/";
-static const char ESPFORM_STR_16[] PROGMEM = "id";
-static const char ESPFORM_STR_17[] PROGMEM = "event";
-static const char ESPFORM_STR_18[] PROGMEM = "value";
-static const char ESPFORM_STR_19[] PROGMEM = "{\"type\":\"get\",\"id\":\"";
-static const char ESPFORM_STR_20[] PROGMEM = "{\"type\":\"set\",\"id\":\"";
-static const char ESPFORM_STR_21[] PROGMEM = "\",\"value\":\"";
-static const char ESPFORM_STR_22[] PROGMEM = "\"}";
-static const char ESPFORM_STR_23[] PROGMEM = "esp";
-static const char ESPFORM_STR_24[] PROGMEM = "max-age=0";
-static const char ESPFORM_STR_25[] PROGMEM = "/favicon.ico";
-static const char ESPFORM_STR_26[] PROGMEM = "/espform.js";
-static const char ESPFORM_STR_27[] PROGMEM = "/espform_app.js";
-static const char ESPFORM_STR_28[] PROGMEM = ".html";
-static const char ESPFORM_STR_29[] PROGMEM = "type";
-static const char ESPFORM_STR_30[] PROGMEM = "event";
-static const char ESPFORM_STR_31[] PROGMEM = "get";
-static const char ESPFORM_STR_32[] PROGMEM = "espf.sv(\"";
-static const char ESPFORM_STR_33[] PROGMEM = "\",\"";
-static const char ESPFORM_STR_34[] PROGMEM = "\");\r\n";
-static const char ESPFORM_STR_35[] PROGMEM = "espf.av(\"";
-static const char ESPFORM_STR_36[] PROGMEM = "\",";
-static const char ESPFORM_STR_37[] PROGMEM = ");\r\n";
-static const char ESPFORM_STR_38[] PROGMEM = "404: File Not Found";
-static const char ESPFORM_STR_39[] PROGMEM = "undefined";
-static const char ESPFORM_STR_40[] PROGMEM = "onclick";
-static const char ESPFORM_STR_41[] PROGMEM = "ondblclick";
-static const char ESPFORM_STR_42[] PROGMEM = "onmousedown";
-static const char ESPFORM_STR_43[] PROGMEM = "onmousemove";
-static const char ESPFORM_STR_44[] PROGMEM = "onmouseout";
-static const char ESPFORM_STR_45[] PROGMEM = "onmouseover";
-static const char ESPFORM_STR_46[] PROGMEM = "onmouseup";
-static const char ESPFORM_STR_47[] PROGMEM = "onmousewheel";
-static const char ESPFORM_STR_48[] PROGMEM = "onwheel";
-static const char ESPFORM_STR_49[] PROGMEM = "onkeydown";
-static const char ESPFORM_STR_50[] PROGMEM = "onkeypress";
-static const char ESPFORM_STR_51[] PROGMEM = "onkeyup";
-static const char ESPFORM_STR_52[] PROGMEM = "onchange";
-static const char ESPFORM_STR_53[] PROGMEM = "onsubmit";
-static const char ESPFORM_STR_54[] PROGMEM = "oninput";
-static const char ESPFORM_STR_55[] PROGMEM = "onfocus";
-static const char ESPFORM_STR_56[] PROGMEM = "oncontextmenu";
-static const char ESPFORM_STR_57[] PROGMEM = "onselect";
-static const char ESPFORM_STR_58[] PROGMEM = "onsearch";
-static const char ESPFORM_STR_59[] PROGMEM = "onreset";
-static const char ESPFORM_STR_60[] PROGMEM = "oninvalid";
-static const char ESPFORM_STR_61[] PROGMEM = "pool.ntp.org";
-static const char ESPFORM_STR_62[] PROGMEM = "time.nist.gov";
-static const char ESPFORM_STR_63[] PROGMEM = "WEP";
-static const char ESPFORM_STR_64[] PROGMEM = "TKIP";
-static const char ESPFORM_STR_65[] PROGMEM = "CCMP";
-static const char ESPFORM_STR_66[] PROGMEM = "None";
-static const char ESPFORM_STR_67[] PROGMEM = "Auto";
-static const char ESPFORM_STR_68[] PROGMEM = "WPA_PSK";
-static const char ESPFORM_STR_69[] PROGMEM = "WPA2_PSK";
-static const char ESPFORM_STR_70[] PROGMEM = "WPA_WPA2_PSK";
-static const char ESPFORM_STR_71[] PROGMEM = "WPA2_ENTERPRISE";
-static const char ESPFORM_STR_72[] PROGMEM = "MAX";
-static const char ESPFORM_STR_73[] PROGMEM = "DEBUG:  WS get Element value";
-static const char ESPFORM_STR_74[] PROGMEM = "DEBUG:  WS set Element value";
-static const char ESPFORM_STR_75[] PROGMEM = "DEBUG:  WS run script";
-static const char ESPFORM_STR_76[] PROGMEM = "DEBUG:  Soft-AP enable failed!";
-static const char ESPFORM_STR_77[] PROGMEM = "DEBUG:  Soft-AP SSID: %s, PSW: %s, IP: %s\n";
-static const char ESPFORM_STR_78[] PROGMEM = "DEBUG:  Soft-AP start failed!";
-static const char ESPFORM_STR_79[] PROGMEM = "DEBUG:  DNS server started.";
-static const char ESPFORM_STR_80[] PROGMEM = "DEBUG:  HTTP server started.";
-static const char ESPFORM_STR_81[] PROGMEM = "DEBUG:  WebSocket server started.";
-static const char ESPFORM_STR_82[] PROGMEM = "DEBUG:  Server sends response: ";
-static const char ESPFORM_STR_83[] PROGMEM = "DEBUG:  WS IO error with client [%u]\n";
-static const char ESPFORM_STR_84[] PROGMEM = "DEBUG:  WS Disconnected from client [%u]!\n";
-static const char ESPFORM_STR_85[] PROGMEM = "DEBUG:  WS Connected with client [%u]\n";
-static const char ESPFORM_STR_86[] PROGMEM = "DEBUG:  WS Get text payload [%u] from client [%u]\n";
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#define FLASH_FS DEFAULT_FLASH_FS
+#define SD_FS DEFAULT_SD_FS
+#if defined(ESP32)
+#define FORMAT_FLASH FORMAT_FLASH_IF_MOUNT_FAILED
+#endif
+
+static const char espform_str_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
+static const char espform_str_2[] PROGMEM = "task";
+static const char espform_str_3[] PROGMEM = "_ref";
+static const char espform_str_4[] PROGMEM = "ESPForm";
+static const char espform_str_5[] PROGMEM = "Location";
+static const char espform_str_6[] PROGMEM = "http://";
+static const char espform_str_7[] PROGMEM = "text/plain";
+static const char espform_str_8[] PROGMEM = "Content-Encoding";
+static const char espform_str_9[] PROGMEM = "gzip";
+static const char espform_str_10[] PROGMEM = "Cache-Control";
+static const char espform_str_11[] PROGMEM = "no-cache, no-store, must-revalidate";
+static const char espform_str_12[] PROGMEM = "index.html";
+static const char espform_str_13[] PROGMEM = "/";
+static const char espform_str_14[] PROGMEM = "[";
+static const char espform_str_15[] PROGMEM = "]/";
+static const char espform_str_16[] PROGMEM = "id";
+static const char espform_str_17[] PROGMEM = "event";
+static const char espform_str_18[] PROGMEM = "value";
+static const char espform_str_19[] PROGMEM = "{\"type\":\"get\",\"id\":\"";
+static const char espform_str_20[] PROGMEM = "{\"type\":\"set\",\"id\":\"";
+static const char espform_str_21[] PROGMEM = "\",\"value\":\"";
+static const char espform_str_22[] PROGMEM = "\"}";
+static const char espform_str_23[] PROGMEM = "esp";
+static const char espform_str_24[] PROGMEM = "max-age=0";
+static const char espform_str_25[] PROGMEM = "/favicon.ico";
+static const char espform_str_26[] PROGMEM = "/espform.js";
+static const char espform_str_27[] PROGMEM = "/espform_app.js";
+static const char espform_str_28[] PROGMEM = ".html";
+static const char espform_str_29[] PROGMEM = "type";
+static const char espform_str_30[] PROGMEM = "event";
+static const char espform_str_31[] PROGMEM = "get";
+static const char espform_str_32[] PROGMEM = "espf.sv(\"";
+static const char espform_str_33[] PROGMEM = "\",\"";
+static const char espform_str_34[] PROGMEM = "\");\r\n";
+static const char espform_str_35[] PROGMEM = "espf.av(\"";
+static const char espform_str_36[] PROGMEM = "\",";
+static const char espform_str_37[] PROGMEM = ");\r\n";
+static const char espform_str_38[] PROGMEM = "404: File Not Found";
+static const char espform_str_39[] PROGMEM = "undefined";
+static const char espform_str_40[] PROGMEM = "onclick";
+static const char espform_str_41[] PROGMEM = "ondblclick";
+static const char espform_str_42[] PROGMEM = "onmousedown";
+static const char espform_str_43[] PROGMEM = "onmousemove";
+static const char espform_str_44[] PROGMEM = "onmouseout";
+static const char espform_str_45[] PROGMEM = "onmouseover";
+static const char espform_str_46[] PROGMEM = "onmouseup";
+static const char espform_str_47[] PROGMEM = "onmousewheel";
+static const char espform_str_48[] PROGMEM = "onwheel";
+static const char espform_str_49[] PROGMEM = "onkeydown";
+static const char espform_str_50[] PROGMEM = "onkeypress";
+static const char espform_str_51[] PROGMEM = "onkeyup";
+static const char espform_str_52[] PROGMEM = "onchange";
+static const char espform_str_53[] PROGMEM = "onsubmit";
+static const char espform_str_54[] PROGMEM = "oninput";
+static const char espform_str_55[] PROGMEM = "onfocus";
+static const char espform_str_56[] PROGMEM = "oncontextmenu";
+static const char espform_str_57[] PROGMEM = "onselect";
+static const char espform_str_58[] PROGMEM = "onsearch";
+static const char espform_str_59[] PROGMEM = "onreset";
+static const char espform_str_60[] PROGMEM = "oninvalid";
+static const char espform_str_61[] PROGMEM = "pool.ntp.org";
+static const char espform_str_62[] PROGMEM = "time.nist.gov";
+static const char espform_str_63[] PROGMEM = "WEP";
+static const char espform_str_64[] PROGMEM = "TKIP";
+static const char espform_str_65[] PROGMEM = "CCMP";
+static const char espform_str_66[] PROGMEM = "None";
+static const char espform_str_67[] PROGMEM = "Auto";
+static const char espform_str_68[] PROGMEM = "WPA_PSK";
+static const char espform_str_69[] PROGMEM = "WPA2_PSK";
+static const char espform_str_70[] PROGMEM = "WPA_WPA2_PSK";
+static const char espform_str_71[] PROGMEM = "WPA2_ENTERPRISE";
+static const char espform_str_72[] PROGMEM = "MAX";
+static const char espform_str_73[] PROGMEM = "DEBUG:  WS get Element value";
+static const char espform_str_74[] PROGMEM = "DEBUG:  WS set Element value";
+static const char espform_str_75[] PROGMEM = "DEBUG:  WS run script";
+static const char espform_str_76[] PROGMEM = "DEBUG:  Soft-AP enable failed!";
+static const char espform_str_77[] PROGMEM = "DEBUG:  Soft-AP SSID: %s, PSW: %s, IP: %s\n";
+static const char espform_str_78[] PROGMEM = "DEBUG:  Soft-AP start failed!";
+static const char espform_str_79[] PROGMEM = "DEBUG:  DNS server started.";
+static const char espform_str_80[] PROGMEM = "DEBUG:  HTTP server started.";
+static const char espform_str_81[] PROGMEM = "DEBUG:  WebSocket server started.";
+static const char espform_str_82[] PROGMEM = "DEBUG:  Server sends response: ";
+static const char espform_str_83[] PROGMEM = "DEBUG:  WS IO error with client [%u]\n";
+static const char espform_str_84[] PROGMEM = "DEBUG:  WS Disconnected from client [%u]!\n";
+static const char espform_str_85[] PROGMEM = "DEBUG:  WS Connected with client [%u]\n";
+static const char espform_str_86[] PROGMEM = "DEBUG:  WS Get text payload [%u] from client [%u]\n";
 
 static const uint8_t favicon_gz[] PROGMEM = {
     0x1F, 0x8B, 0x08, 0x08, 0xFD, 0x2F, 0xAC, 0x5E, 0x04, 0x00, 0x66, 0x61, 0x76, 0x69, 0x63, 0x6F,
@@ -488,70 +510,11 @@ static const uint8_t loader_html_gz[] PROGMEM = {
 
 };
 
-enum ESPFormEventType
-{
-    EVENT_UNDEFINED = 0,
-    EVENT_ON_CLICK = 1,
-    EVENT_ON_DBLCLICK = 2,
-    EVENT_ON_MOUSEDOWN = 3,
-    EVENT_ON_MOUSEMOVE = 4,
-    EVENT_ON_MOUSEOUT = 5,
-    EVENT_ON_MOUSEOVER = 6,
-    EVENT_ON_MOUSEUP = 7,
-    EVENT_ON_MOUSEWHEEL = 8,
-    EVENT_ON_WHEEL = 9,
-    EVENT_ON_KEYDOWN = 10,
-    EVENT_ON_KEYPRESS = 11,
-    EVENT_ON_KEYUP = 12,
-    EVENT_ON_CHANGE = 13,
-    EVENT_ON_SUBMIT = 14,
-    EVENT_ON_INPUT = 15,
-    EVENT_ON_FOCUS = 16,
-    EVENT_ON_CONTEXTMENU = 17,
-    EVENT_ON_SELECT = 18,
-    EVENT_ON_SEARCH = 19,
-    EVENT_ON_RESET = 20,
-    EVENT_ON_INVALID = 21,
-
-};
-
 enum ESPFormStorageType
 {
-    ESPFormStorage_SPIFFS = 1,
-    ESPFormStorage_SD = 2
+    esp_form_storage_flash = 1,
+    esp_form_storage_sd = 2
 };
-
-typedef struct
-{
-    std::string name = "";
-    std::string path = "";
-    const char *content = nullptr;
-    bool gzip = false;
-    uint32_t len = 0;
-    ESPFormStorageType storageType = ESPFormStorage_SPIFFS;
-} file_content_info_t;
-
-typedef struct network_info_t
-{
-    String ssid = "";
-#if defined(ESP32)
-    wifi_auth_mode_t encType = WIFI_AUTH_OPEN;
-#elif defined(ESP8266)
-    wl_enc_type encType = ENC_TYPE_NONE;
-#endif
-    uint8_t quality = 0;
-    uint8_t channel = 1;
-} NetworkInfo;
-
-typedef struct html_element_item_t
-{
-    String id = "";
-    ESPFormEventType event;
-    String value = "";
-    String type = "";
-    bool success = false;
-
-} HTMLElementItem;
 
 typedef void (*IdleTimeoutCallback)(void);
 
@@ -562,17 +525,374 @@ typedef struct idle_timeout_t
     unsigned long _idleTime = 0;
     bool _idleStarted = false;
     bool _serverStarted = false;
+    bool _serverRun = false;
     IdleTimeoutCallback _idleTimeoutCallback = nullptr;
 
 } IdleTimeout_t;
 
 #ifdef ESP32
-
 static std::vector<std::reference_wrapper<WebServer>> _webServer;
 static std::vector<std::reference_wrapper<WebSocketsServer>> _webSocket;
 static std::vector<std::reference_wrapper<IdleTimeout_t>> _idleTimeoutInfo;
 static uint8_t objIndex __attribute__((used)) = 0;
 #endif
+
+class WiFiInfo;
+
+class ESPFormClass
+{
+
+public:
+    typedef enum esp_form_event_type
+    {
+        EVENT_UNDEFINED = 0,
+        EVENT_ON_CLICK = 1,
+        EVENT_ON_DBLCLICK = 2,
+        EVENT_ON_MOUSEDOWN = 3,
+        EVENT_ON_MOUSEMOVE = 4,
+        EVENT_ON_MOUSEOUT = 5,
+        EVENT_ON_MOUSEOVER = 6,
+        EVENT_ON_MOUSEUP = 7,
+        EVENT_ON_MOUSEWHEEL = 8,
+        EVENT_ON_WHEEL = 9,
+        EVENT_ON_KEYDOWN = 10,
+        EVENT_ON_KEYPRESS = 11,
+        EVENT_ON_KEYUP = 12,
+        EVENT_ON_CHANGE = 13,
+        EVENT_ON_SUBMIT = 14,
+        EVENT_ON_INPUT = 15,
+        EVENT_ON_FOCUS = 16,
+        EVENT_ON_CONTEXTMENU = 17,
+        EVENT_ON_SELECT = 18,
+        EVENT_ON_SEARCH = 19,
+        EVENT_ON_RESET = 20,
+        EVENT_ON_INVALID = 21,
+
+    } ESPFormEventType;
+
+    typedef struct html_element_item_t
+    {
+        String id = "";
+        ESPFormEventType event;
+        String value = "";
+        String type = "";
+        bool success = false;
+
+    } HTMLElementItem;
+
+    typedef struct network_info_t
+    {
+        String ssid = "";
+#if defined(ESP32)
+        wifi_auth_mode_t encType = WIFI_AUTH_OPEN;
+#elif defined(ESP8266)
+        wl_enc_type encType = ENC_TYPE_NONE;
+#endif
+        uint8_t quality = 0;
+        uint8_t channel = 1;
+    } NetworkInfo;
+
+    typedef void (*ElementEventCallback)(HTMLElementItem);
+    typedef void (*WiFiScanResultItemCallback)(NetworkInfo);
+
+#if defined(ESP32)
+    typedef wifi_auth_mode_t EncriptionType;
+#elif defined(ESP8266)
+    typedef wl_enc_type EncriptionType;
+    typedef std::function<void(void)> callback_function_t;
+#endif
+
+    ESPFormClass();
+    ~ESPFormClass();
+
+    /** Terminate the web server and free resources.
+    */
+    void terminateServer();
+
+    /** Get the number of HTML resource files and data (.html, .css, .js...) added for webpage rendering.
+     * @return - The number or resources that added and use for webpage.
+    */
+    size_t getFileCount();
+
+    /** Delete all HTML resource files that added for webpage rendering.
+    */
+    void deleteAllFiles();
+
+    /** Add the HTML resource data in the form of raw string from SPIFFS (PROGMEM) for webpage rendering.
+     * @param content The PROGMEM (constant char array) data.
+     * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
+    */
+    void addFileData(PGM_P content, const char *fileName);
+
+    /** Add the HTML resource data in the form of byte array w/wo compression from SPIFFS (PROGMEM) for webpage rendering.
+     * @param content The constant uint8_t array data.
+     * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
+     * @param length The length of data.
+     * @param gzip The gzip compression option. Set to true if the array data is the gzip compressed data.
+    */
+    void addFileData(const uint8_t *content, const char *fileName, size_t length, bool gzip);
+
+    /** Add the HTML resource file from SPIFFS or SD/microSD for webpage rendering.
+     * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
+     * @param filePath The full file path in SPIFFS or SD card.
+     * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
+    */
+    void addFile(const char *fileName, const char *filePath, ESPFormStorageType storagetype);
+
+    /** Run the javascript in the client's browser.
+     * @param script The string that represents the variables, objcts, array and functions in javascript.
+    */
+    void runScript(const String &script);
+
+    /** Set the Soft AP configuration.
+     * @param ssid The Soft AP's SSID (less than 32 characters).
+     * @param psw The Soft AP's Password (between 8 to 63 characters).
+     * @param channel The Soft AP's channel.
+     * @param ssid_hidden The option to show or hide the SSID for clients.
+     * @param max_connection The maximum clients to connected (default value is 4).
+    */
+    void setAP(const char *ssid, const char *psw, int channel = 1, int ssid_hidden = 0, int max_connection = 4);
+
+    /** Stop Access Point.
+    */
+    void stopAP();
+
+    /** Set the Soft AP static IPs.
+     * @param local_ip The Soft AP's fixed IP.
+     * @param gateway The Soft AP's default gateway IP.
+     * @param subnet The Soft AP's subnet mask.
+    */
+    void setIP(IPAddress local_ip, IPAddress gateway, IPAddress subnet);
+
+    /** Start the web server.
+    */
+    void startServer();
+
+    /** Stop the web server.
+    */
+    void stopServer();
+
+    /** Initiate the library with callback functions and debug enable option.
+     * @param eventCallback The HTML Form Element event callback function to receive the event data.
+     * @param timeoutCallback The server timeout callback function when no clients connected to device within the specific duration.
+     * @param timeout The server timeout duration.
+     * @param debug The debug enable option.
+    */
+    void begin(ElementEventCallback eventCallback, IdleTimeoutCallback timeoutCallback = nullptr, unsigned long timeout = 600000, bool debug = false);
+
+    /** Add or register the HTML Form Element's event.
+     * @param id The id of HTML Form Element (id attribute).
+     * @param event The number of ESPFormEventType enumeration e.g. EVENT_ON_CLICK = 1, EVENT_ON_DBLCLICK = 2, and EVENT_ON_MOUSEDOWN = 3.
+     * @param defaultValue The default value of HTML Form Element.
+    */
+    void addElementEventListener(const String &id, ESPFormEventType event, const char *defaultValue = NULL);
+
+    /** Save the HTML Form Element's event items and their value as file (json format).
+     * @param fileName The file name to save.
+     * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
+    */
+    void saveElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
+
+    /** Load the HTML Form Element's event items and their value from file
+     * @param fileName The file name to read.
+     * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
+    */
+    void loadElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
+
+    /** Read or get a HTML Form Element item value that loaed from file or added with function addElementEventListener.
+     * @param id The id of item.
+     * @return HTMLElementItem type data. The HTMLElementItem data comprises of id, event, value, type and success properties.
+     * 
+     * The id property is the HTML Form Element id attribute.
+     * The value property is the HTML Form Element value or innerText attribute (depends on type of HTML element).
+     * The type is the types of data e.g event (HTML Form Element event trigged) and get (device requests the value from HTML Form Element).
+     * The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick.
+     * The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1.
+     * The success property is the boolean value that sets to true if the id of item or HTML Form Element found in the config file or has been added with addElementEventListener.
+    */
+    ESPFormClass::HTMLElementItem getElementEventConfigItem(const String &id);
+
+    /** Set the HTML Form Element items (locally in device).
+     * @param element - The HTMLElementItem type data that comprises of id, event, value, type and success properties.
+     * Required save to file to save changes.
+    */
+    void setElementEventConfigItem(HTMLElementItem &element);
+
+    /** Remove the HTML Form Element items (locally in device).
+     * @param id The id of the HTML Form Element.
+     * Required save to file to save changes.
+    */
+    void removeElementEventConfigItem(const String &id);
+
+    /** Read or get a HTML Form Element value from client.
+     * @param id The id of the HTML Form Element.
+     * The returning value will receive by the event callback function with HTMLElementItem which its type is 'get'.
+    */
+    void getElementContent(const char *id);
+
+    /** Set or change a HTML Form Element value (local item and client element values changed).
+     * @param id The id of the HTML Form Element.
+     * @param id The content or value to set.
+     * Required save to file to save changes.
+    */
+    void setElementContent(const char *id, const String &content);
+
+    /** Clear all HTML Form Element in config or added with addElementEventListener.
+     * Required save to file to save changes.
+    */
+    void clearElementEventConfig();
+
+    /** Get the HTML Form Element Event (ESPFormEventType) as string.
+     * @param event The ESPFormEventType enumeration value.
+     * @return String of event.
+    */
+    String getElementEventString(ESPFormEventType event);
+
+    /** Get the WiFi encryption method (EncriptionType) as string.
+     * @param encType The EncriptionType enumeration value.
+     * @return String of encType.
+     * The EncriptionType is the name of wifi_auth_mode_t (ESP32) or wl_enc_type (ESP8266);
+    */
+    String getWiFiEncrytionTypeString(EncriptionType encType);
+
+    /** Scan WiFi network and get the result as WiFiInfo type data.
+     * @param scanCallback The WiFiScanResultItemCallback callback function that accepted the
+     * NetworkInfo data i.e. ssid, encType, channel and quality.
+     * @param max The maximum network list in the scan result.
+     * @param showHidden The option to inclued the hidden netwok.
+    */
+    void scanWiFi(WiFiScanResultItemCallback scanCallback, uint8_t max = 10, bool showHidden = false);
+
+    /** Get the number of connected clients at the present.
+     * @return Number of clients.
+    */
+    size_t getClientCount();
+
+    /** Get the HTML Form Element numbers that loaded or added.
+     * @return The number of HTML Form Element.
+    */
+    size_t getElementCount();
+
+    /** Set the device time via NTP server.
+     * @param offset The GMT offset.
+     * @return bool status indicates the success of operation.
+    */
+    bool setClock(float offset);
+
+    /** SD card config with GPIO pins.
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sck SPI Clock pin.
+     * @param miso SPI MISO pin.
+     * @param mosi SPI MOSI pin.
+     * @return Boolean type status indicates the success of the operation.
+    */
+    bool sdBegin(int8_t ss, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1);
+
+    /** Initialize the SD_MMC card (ESP32 only).
+     * @param mountpoint The mounting point.
+     * @param mode1bit Allow 1 bit data line (SPI mode).
+     * @param format_if_mount_failed Format SD_MMC card if mount failed.
+     * @return The boolean value indicates the success of operation.
+    */
+    bool sdMMCBegin(const char *mountpoint = "/sdcard", bool mode1bit = false, bool format_if_mount_failed = false);
+
+private:
+    typedef struct
+    {
+        std::string name = "";
+        std::string path = "";
+        const char *content = nullptr;
+        bool gzip = false;
+        uint32_t len = 0;
+        ESPFormStorageType storageType = esp_form_storage_flash;
+    } file_content_info_t;
+
+    struct sd_config_info_t
+    {
+        int sck = -1;
+        int miso = -1;
+        int mosi = -1;
+        int ss = -1;
+        const char *sd_mmc_mountpoint = "";
+        bool sd_mmc_mode1bit = false;
+        bool sd_mmc_format_if_mount_failed = false;
+    };
+
+    struct sd_config_info_t _sd_config;
+
+    bool _sd_rdy = false;
+    bool _flash_rdy = false;
+    bool _sd_used = false;
+
+    IPAddress _ip;
+    IPAddress _gateway;
+    IPAddress _subnet;
+    std::string _ap_ssid = "";
+    std::string _ap_psw = "";
+    bool _skip_self_ap = true;
+    int _channel = 1;
+    int _ssid_hidden = 0;
+    int _max_connection = 4;
+    bool _ipConfig = false;
+    bool _task_created = false;
+    int _index = -1;
+
+#ifdef ESP32
+    std::shared_ptr<WebServer> _web_server_ptr = nullptr;
+    std::shared_ptr<WebSocketsServer> _web_socket_ptr = nullptr;
+    TaskHandle_t _xTaskHandle = NULL;
+    std::string _taskName;
+#elif defined(ESP8266)
+    std::shared_ptr<DNSServer> _dns_server_ptr;
+    std::shared_ptr<ESP8266WebServer> _web_server_ptr;
+    std::shared_ptr<WebSocketsServer> _web_socket_ptr;
+#endif
+
+    const byte _dns_port = 53;
+    const byte _web_server_port = 80;
+    const byte _web_socket_port = 81;
+    std::shared_ptr<FirebaseJsonArray> _form_config = std::shared_ptr<FirebaseJsonArray>(new FirebaseJsonArray());
+    std::vector<file_content_info_t> _file_info = std::vector<file_content_info_t>();
+    ElementEventCallback _elementEventCallback = nullptr;
+#if defined(ESP8266)
+    callback_function_t _callback_function = nullptr;
+#endif
+    bool _debug = false;
+    File _file;
+    bool _ap_started = false;
+    idle_timeout_t _idle_to;
+
+    unsigned long _last_recon_millis = 0;
+    unsigned long _reccon_tmo = 10000;
+
+    void getPath(uint8_t type, int index, std::string &buf);
+    void startAP();
+    void startDNSServer();
+    void startWebServer();
+    void startWebSocket();
+    void handleNotFound();
+    void getMIME(const String &ext, String &mime);
+    bool handleFileRead();
+    void goLandingPage();
+    bool isIP(String str);
+    String toIpString(IPAddress ip);
+    void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t lenght);
+    void serverRun();
+    bool sdTest(fs::File file);
+    bool flashTest();
+    char *strP(PGM_P pgm);
+    void delS(char *p);
+    char *newS(size_t len);
+    char *intStr(int value);
+    void appendP(std::string &buf, PGM_P p, bool empty = false);
+    uint8_t getRSSIasQuality(int RSSI);
+    bool reconnect();
+    void prepareConfig();
+    void int_scanWiFi(WiFiInfo *result, WiFiScanResultItemCallback scanCallback, uint8_t max = 10, bool showHidden = false);
+#if defined(ESP8266)
+    void set_scheduled_callback(callback_function_t callback);
+#endif
+};
 
 class WiFiInfo
 {
@@ -590,9 +910,9 @@ public:
     {
         return _r.size();
     }
-    NetworkInfo getInfo(size_t index)
+    ESPFormClass::NetworkInfo getInfo(size_t index)
     {
-        network_info_t r;
+        ESPFormClass::network_info_t r;
         if (index < _r.size())
             return _r[index];
         return r;
@@ -603,396 +923,7 @@ public:
     }
 
 private:
-    std::vector<NetworkInfo> _r;
-};
-
-class ESPFormClass
-{
-
-public:
-    typedef void (*ElementEventCallback)(HTMLElementItem);
-
-#if defined(ESP32)
-    typedef wifi_auth_mode_t EncriptionType;
-#elif defined(ESP8266)
-    typedef wl_enc_type EncriptionType;
-#endif
-
-    ESPFormClass();
-    ~ESPFormClass();
-
-    /*
-    
-    Terminate the web server and free resources.
-    */
-    void terminateServer();
-
-    /*
-    
-    Get the number of HTML resource files and data (.html, .css, .js...) added for webpage rendering .
-
-    @return - The number or resources that added and use for webpage.
-
-    */
-    size_t getFileCount();
-
-    /*
-    
-    Delete all HTML resource files that added for webpage rendering .
-
-    */
-    void deleteAllFiles();
-
-    /*
-    Add the HTML resource data in the form of raw string from SPIFFS (PROGMEM) for webpage rendering.
-    
-    @param content - The PROGMEM (constant char array) data.
-    @param fileName - The name of resource file (constant char array) in the form of URI e.g., /image.png.
-
-   */
-    void addFileData(PGM_P content, const char *fileName);
-
-    /*
-    Add the HTML resource data in the form of byte array w/wo compression from SPIFFS (PROGMEM) for webpage rendering.
-    
-    @param content - The constant uint8_t array data.
-    @param fileName - The name of resource file (constant char array) in the form of URI e.g., /image.png.
-    @param length - The length of data.
-    @param gzip - The gzip compression option. Set to true if the array data is the gzip compressed data.
-
-   */
-    void addFileData(const uint8_t *content, const char *fileName, size_t length, bool gzip);
-
-    /*
-    Add the HTML resource file from SPIFFS or SD/microSD for webpage rendering.
-    
-    @param fileName - The name of resource file (constant char array) in the form of URI e.g., /image.png.
-    @param filePath - The full file path in SPIFFS or SD card.
-    @param storagetype - The type of storage of file e.g., ESPFormStorage_SPIFFS or ESPFormStorage_SD.
-
-   */
-    void addFile(const char *fileName, const char *filePath, ESPFormStorageType storagetype);
-
-    /*
-    Run the javascript in the client's browser.
-    
-    @param script - The string that represents the variables, objcts, array and functions in javascript.
-
-   */
-    void runScript(const String &script);
-
-    /*
-    Set the Soft AP configuration.
-    
-    @param ssid - The Soft AP's SSID (less than 32 characters).
-    @param psw - The Soft AP's Password (between 8 to 63 characters).
-    @param channel - The Soft AP's channel.
-    @param ssid_hidden - The option to show or hide the SSID for clients.
-    @param max_connection - The maximum clients to connected (default value is 4).
-
-   */
-    void setAP(const char *ssid, const char *psw, int channel = 1, int ssid_hidden = 0, int max_connection = 4);
-
-    /*
-    Set the Soft AP static IPs.
-    
-    @param local_ip - The Soft AP's fixed IP.
-    @param gateway - The Soft AP's default gateway IP.
-    @param subnet - The Soft AP's subnet mask.
-
-   */
-    void setIP(IPAddress local_ip, IPAddress gateway, IPAddress subnet);
-
-    /*
-    Start the web server.
-   */
-    void startServer();
-
-    /*
-    Stop the web server.
-   */
-    void stopServer();
-
-    /*
-    Initiate the library with callback functions and debug enable option.
-    
-    @param eventCallback - The HTML Form Element event callback function to receive the event data.
-    @param timeoutCallback - The server timeout callback function when no clients connected to device within the specific duration.
-    @param timeout - The server timeout duration.
-    @param debug - The debug enable option.
-
-   */
-    void begin(ElementEventCallback eventCallback, IdleTimeoutCallback timeoutCallback = nullptr, unsigned long timeout = 600000, bool debug = false);
-
-    /*
-    Add or register the HTML Form Element's event.
-    
-    @param id - The id of HTML Form Element (id attribute).
-    @param event - The number of ESPFormEventType enumeration e.g. EVENT_ON_CLICK = 1, EVENT_ON_DBLCLICK = 2, and EVENT_ON_MOUSEDOWN = 3.
-    @param defaultValue - The default value of HTML Form Element.
-
-   */
-    void addElementEventListener(const String &id, ESPFormEventType event, const char *defaultValue = NULL);
-
-    /*
-    Save the HTML Form Element's event items and their value as file (json format).
-    
-    @param fileName - The file name to save.
-    @param storagetype - The type of storage of file e.g., ESPFormStorage_SPIFFS or ESPFormStorage_SD.
-
-   */
-    void saveElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
-
-    /*
-    Load the HTML Form Element's event items and their value from file.
-    
-    @param fileName - The file name to read.
-    @param storagetype - The type of storage of file e.g., ESPFormStorage_SPIFFS or ESPFormStorage_SD.
-
-   */
-    void loadElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
-
-    /*
-    Read or get a HTML Form Element item value that loaed from file or added with function addElementEventListener.
-    
-    @param id - The id of item.
-
-   @return HTMLElementItem type data. The HTMLElementItem data comprises of id, event, value, type and success properties.
-
-   The id property is the HTML Form Element id attribute. 
-   
-   The value property is the HTML Form Element value or innerText attribute (depends on type of HTML element). 
-   
-   The type is the types of data e.g event (HTML Form Element event trigged) and get (device requests the value from HTML Form Element).
-   
-   The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick. 
-   
-   The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1. 
-
-   The success property is the boolean value that sets to true if the id of item or HTML Form Element found in the config file or has been added with addElementEventListener.  
-
-   */
-    HTMLElementItem getElementEventConfigItem(const String &id);
-
-    /*
-    Set the HTML Form Element items (locally in device).
-    
-    @param element - The HTMLElementItem type data that comprises of id, event, value, type and success properties.
-
-    Required save to file to save changes.
-
-   */
-    void setElementEventConfigItem(HTMLElementItem &element);
-
-    /*
-    Remove the HTML Form Element items (locally in device).
-    
-    @param id -  The id of the HTML Form Element. 
-
-    Required save to file to save changes.
-
-   */
-    void removeElementEventConfigItem(const String &id);
-
-    /*
-    Read or get a HTML Form Element value from client.
-    
-    @param id - The id of the HTML Form Element.
-
-    The returning value will receive by the event callback function with HTMLElementItem which its type is 'get'.
-
-   */
-    void getElementContent(const char *id);
-
-    /*
-    Set or change a HTML Form Element value (local item and client element values changed).
-    
-    @param id - The id of the HTML Form Element.
-    @param id - The content or value to set.
-
-    Required save to file to save changes.
-
-   */
-    void setElementContent(const char *id, const String &content);
-
-    /*
-    Clear all HTML Form Element in config or added with addElementEventListener.
-
-    Required save to file to save changes.
-
-   */
-    void clearElementEventConfig();
-
-    /*
-    Get the HTML Form Element Event (ESPFormEventType) as string.
-    
-    @param event - The ESPFormEventType enumeration value.
-
-    @return - String of event.
-
-   */
-    String getElementEventString(ESPFormEventType event);
-
-    /*
-    Get the WiFi encryption method (EncriptionType) as string.
-    
-    @param encType - The EncriptionType enumeration value.
-
-    @return - String of encType.
-
-    The EncriptionType is the name of wifi_auth_mode_t (ESP32) or wl_enc_type (ESP8266);
-
-   */
-    String getWiFiEncrytionTypeString(EncriptionType encType);
-
-    /*
-    Scan WiFi network and get the result as WiFiInfo type data.
-    
-    @param result - The WiFiInfo data type which contains the array of NetworkInfo object.
-    The NetworkInfo object has ssid, encType, channel and quality properties.
-    @param max - The maximum network list in the scan result.
-    @param showHidden - The option to inclued the hidden netwok.
-
-   */
-    void scanWiFi(WiFiInfo &result, uint8_t max = 10, bool showHidden = false);
-
-    /*
-    Get the number of connected clients at the present.
-    
-    @return - Number of clients.
-
-   */
-    size_t getClientCount();
-
-    /*
-    Get the HTML Form Element numbers that loaded or added.
-
-    @return - The number of HTML Form Element.
-
-   */
-    size_t getElementCount();
-
-    /*
-    Set the device time via NTP server.
-    
-    @param encType - The GMT offset.
-
-   */
-    bool setClock(float offset);
-
-
-#if defined(ESP32)
-    /*
-  
-    Init SD card with GPIO pins.
-  
-    @param sck -  SPI Clock pin.
-    @param miso - SPI MISO pin.
-    @param mosi - SPI MOSI pin.
-    @param ss -   SPI Chip/Slave Select pin.
-
-    @return Boolean type status indicates the success of the operation.
-
-   */
-    bool sdBegin(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t ss);
-
-    /*
-  
-    Init SD card with default GPIO pins.
-
-    @return Boolean type status indicates the success of operation.
-  
-   */
-    bool sdBegin(void);
-#elif defined(ESP8266)
-    /*
-  
-    Init SD card with CS pins.
-  
-    @param csPin -  SPI Chip/Slave Select pin.
-
-    @return Boolean type status indicates the success of the operation.
-
-   */
-    bool sdBegin(uint8_t csPin);
-    
-#endif
-
-private:
-    void getPath(uint8_t type, int index, std::string &buf);
-    void startAP();
-    void startDNSServer();
-    void startWebServer();
-    void startWebSocket();
-    void handleNotFound();
-    void getMIME(const String &ext, String &mime);
-    bool handleFileRead();
-    void goLandingPage();
-    bool isIP(String str);
-    String toIpString(IPAddress ip);
-    void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t lenght);
-    void serverRun();
-    bool sdTest();
-    char *getPGMString(PGM_P pgm);
-    void delPtr(char *p);
-    char *newPtr(size_t len);
-    char *newPtr(char *p, size_t len);
-    char *newPtr(char *p, size_t len, char *d);
-    char *getIntString(int value);
-    void p_memCopy(std::string &buf, PGM_P p, bool empty = false);
-    uint8_t getRSSIasQuality(int RSSI);
-    bool reconnect();
-    void prepareConfig();
-
-    IPAddress _ip;
-    IPAddress _gateway;
-    IPAddress _subnet;
-    std::string _apSSID = "";
-    std::string _apPSW = "";
-    bool _skipSelfAP = true;
-    int _channel = 1;
-    int _ssid_hidden = 0;
-    int _max_connection = 4;
-    bool _ipConfig = false;
-    bool _taskCreated = false;
-
-#ifdef ESP32
-    std::shared_ptr<WebServer> _webServerPtr;
-    std::shared_ptr<WebSocketsServer> _webSocketPtr;
-    TaskHandle_t _xTaskHandle = NULL;
-    std::string _taskName;
-#elif defined(ESP8266)
-    std::shared_ptr<DNSServer> _dnsServerPtr;
-    std::shared_ptr<ESP8266WebServer> _webServerPtr;
-    std::shared_ptr<WebSocketsServer> _webSocketPtr;
-    Callback _callback;
-#endif
-
-    const byte dnsPort = 53;
-    const byte webServerPort = 80;
-    const byte webSocketPort = 81;
-    std::shared_ptr<ESPJsonArray> _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
-    std::vector<file_content_info_t> _file_info = std::vector<file_content_info_t>();
-    ElementEventCallback _elementEventCallback = nullptr;
-
-    bool _debug = false;
-    File file;
-    bool _sdOk = false;
-
-    bool _apStarted = false;
-
-    idle_timeout_t _idle_to;
-
-#if defined(ESP32)
-    bool _sdConfigSet = false;
-    uint8_t _sck, _miso, _mosi, _ss;
-    int _index = -1;
-#elif defined(ESP8266)
-    fs::File _file;
-    uint8_t _sdPin = 15;
-    unsigned long _lastReconnectMillis = 0;
-    unsigned long _reconnectTimeout = 10000;
-#endif
+    std::vector<ESPFormClass::NetworkInfo> _r;
 };
 
 extern ESPFormClass ESPForm;

@@ -1,8 +1,6 @@
 
 #ifdef ESP32
 #include <WiFi.h>
-#include "FS.h"
-#include <SPIFFS.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
 #endif
@@ -24,7 +22,7 @@ unsigned long prevMillis = 0;
 unsigned long serverTimeout = 2 * 60 * 1000;
 float timezone = 3;
 
-void formElementEventCallback(HTMLElementItem element)
+void formElementEventCallback(ESPFormClass::HTMLElementItem element)
 {
   Serial.println();
   Serial.println("***********************************");
@@ -57,6 +55,9 @@ void setup()
 {
 
   Serial.begin(115200);
+  Serial.println();
+
+  Serial.printf("ESPForm v%s\n\n", ESPFORM_VERSION);
 
   WiFi.softAPdisconnect(true);
   WiFi.disconnect(true);
@@ -88,34 +89,34 @@ void setup()
   Serial.println("***********************************");
   Serial.println();
 
+  //FLASH_FS is defined in ESPFormFS.h
 #if defined(ESP32)
-  SPIFFS.begin(true);
+  FLASH_FS.begin(true);
 #elif defined(ESP8266)
-  SPIFFS.begin();
+  FLASH_FS.begin();
 #endif
 
   //Element Event Config existed?
-  if (!SPIFFS.exists("/chart-test.json"))
+  if (!FLASH_FS.exists("/chart-test.json"))
   {
 
     //Add html element event listener, id "knob1" for onchange event
-    ESPForm.addElementEventListener("clear-btn", EVENT_ON_CLICK);
+    ESPForm.addElementEventListener("clear-btn", ESPFormClass::EVENT_ON_CLICK);
 
     /*
     If the id of html elements changed, please update the ElementEventListener config
     */
 
     //Save notification config
-    ESPForm.saveElementEventConfig("/chart-test.json", ESPFormStorage_SPIFFS);
+    ESPForm.saveElementEventConfig("/chart-test.json", esp_form_storage_flash);
   }
   else
   {
     //Load notification config
-    ESPForm.loadElementEventConfig("/chart-test.json", ESPFormStorage_SPIFFS);
+    ESPForm.loadElementEventConfig("/chart-test.json", esp_form_storage_flash);
   }
 
   //Add the html contents (in html.h) for the web page rendering
-
 
   //flash uint8_t array, file name, size of array, gzip compression
   ESPForm.addFileData(index_html_gz, "index.html", sizeof(index_html_gz), true);
@@ -133,7 +134,8 @@ void setup()
   Serial.println();
   Serial.println("***********************************");
   Serial.println("Use web browser and navigate to " + WiFi.localIP().toString());
-  Serial.println("Or join the AP " + WiFi.softAPSSID() + " and password " + WiFi.softAPPSK());
+
+  Serial.println("Or join the AP " + apSSID + " and password " + apPSW);
   Serial.println("then navigate to " + WiFi.softAPIP().toString());
   Serial.println("***********************************");
   Serial.println();

@@ -1,8 +1,6 @@
 
 #ifdef ESP32
 #include <WiFi.h>
-#include "FS.h"
-#include <SPIFFS.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
 #endif
@@ -23,7 +21,7 @@ String apPSW = "12345678";
 unsigned long prevMillis = 0;
 unsigned long serverTimeout = 2 * 60 * 1000;
 
-void formElementEventCallback(HTMLElementItem element)
+void formElementEventCallback(ESPFormClass::HTMLElementItem element)
 {
   Serial.println();
   Serial.println("***********************************");
@@ -55,6 +53,9 @@ void setup()
 {
 
   Serial.begin(115200);
+  Serial.println();
+
+  Serial.printf("ESPForm v%s\n\n", ESPFORM_VERSION);
 
   WiFi.softAPdisconnect(true);
   WiFi.disconnect(true);
@@ -77,35 +78,35 @@ void setup()
   Serial.println(WiFi.localIP());
   Serial.println();
 
-
+  //FLASH_FS is defined in ESPFormFS.h
 #if defined(ESP32)
-  SPIFFS.begin(true);
+  FLASH_FS.begin(true);
 #elif defined(ESP8266)
-  SPIFFS.begin();
+  FLASH_FS.begin();
 #endif
 
   //Element Event Config existed?
-  if (!SPIFFS.exists("/knob-test.json"))
+  if (!FLASH_FS.exists("/knob-test.json"))
   {
 
     //Add html element event listener, id "knob1" for onchange event
-    ESPForm.addElementEventListener("knob1", EVENT_ON_CHANGE);
+    ESPForm.addElementEventListener("knob1", ESPFormClass::EVENT_ON_CHANGE);
 
     /*
     If the id of html elements changed, please update the ElementEventListener config
     */
 
     //Save notification config
-    ESPForm.saveElementEventConfig("/knob-test.json", ESPFormStorage_SPIFFS);
+    ESPForm.saveElementEventConfig("/knob-test.json", esp_form_storage_flash);
   }
   else
   {
     //Load notification config
-    ESPForm.loadElementEventConfig("/knob-test.json", ESPFormStorage_SPIFFS);
+    ESPForm.loadElementEventConfig("/knob-test.json", esp_form_storage_flash);
 
     //Test set and read the config value
-    HTMLElementItem element;
-    
+    ESPFormClass::HTMLElementItem element;
+
     //Test read
     element = ESPForm.getElementEventConfigItem("knob1");
     if (element.success)
@@ -118,7 +119,7 @@ void setup()
     }
 
     element.id = "knob1";
-    element.event = EVENT_ON_CHANGE;
+    element.event = ESPFormClass::EVENT_ON_CHANGE;
     element.value = "37";
 
     //Test set the config value
@@ -126,7 +127,7 @@ void setup()
 
 
     //Save changes
-    ESPForm.saveElementEventConfig("/knob-test.json", ESPFormStorage_SPIFFS);
+    ESPForm.saveElementEventConfig("/knob-test.json", esp_form_storage_flash);
   }
 
   //Add the html contents (in html.h) for the web page rendering
@@ -147,7 +148,7 @@ void setup()
 
   Serial.println("***********************************");
   Serial.println("Use web browser and navigate to " + WiFi.localIP().toString());
-  Serial.println("Or join the AP " + WiFi.softAPSSID() + " and password " + WiFi.softAPPSK());
+  Serial.println("Or join the AP " + apSSID + " and password " + apPSW);
   Serial.println("then navigate to " + WiFi.softAPIP().toString());
   Serial.println("***********************************");
   Serial.println();
@@ -168,7 +169,7 @@ void loop()
       ESPForm.setElementContent("knob1", "50");
 
       //Save config
-      ESPForm.saveElementEventConfig("/knob-test.json", ESPFormStorage_SPIFFS);
+      ESPForm.saveElementEventConfig("/knob-test.json", esp_form_storage_flash);
     }
   }
 }

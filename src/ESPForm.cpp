@@ -1,7 +1,7 @@
 /*
- * The ESPForm for Arduino v 1.0.1
+ * The ESPForm for Arduino v 1.0.2
  * 
- * May 11, 2020
+ * May 25, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -17,9 +17,7 @@
  * This library based on the Wrbsocket library from Markus Sattler with some modification to proper working with BearSSL WiFi client for ESP8266.
  * 
  * The MIT License (MIT)
- * Copyright (c) 2020 K. Suwatchai (Mobizt)
- * 
- * Copyright (c) 2015 Markus Sattler. All rights reserved.
+ * Copyright (c) 2021 K. Suwatchai (Mobizt)
  * 
  * 
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -50,15 +48,15 @@
 ESPFormClass::ESPFormClass()
 {
     _debug = false;
-    _sdOk = false;
+    _sd_rdy = false;
+    _flash_rdy = false;
     _idle_to._serverStarted = false;
-    _apStarted = false;
+    _ap_started = false;
 #if defined(ESP32)
-    _sdConfigSet = false;
     _index = -1;
     _xTaskHandle = NULL;
 #elif defined(ESP8266)
-    _sdPin = 15;
+    _sd_config.ss = SD_CS_PIN;
 #endif
 }
 
@@ -70,25 +68,25 @@ ESPFormClass::~ESPFormClass()
 void ESPFormClass::terminateServer()
 {
     stopServer();
-    if (_config)
+    if (_form_config)
     {
-        _config->clear();
-        _config.reset();
-        _config = nullptr;
+        _form_config->clear();
+        _form_config.reset();
+        _form_config = nullptr;
     }
-    if (_webSocketPtr)
+    if (_web_socket_ptr)
     {
-        _webSocketPtr.reset();
-        _webSocketPtr = nullptr;
-        _webServerPtr.reset();
-        _webServerPtr = nullptr;
+        _web_socket_ptr.reset();
+        _web_socket_ptr = nullptr;
+        _web_server_ptr.reset();
+        _web_server_ptr = nullptr;
     }
     _file_info.clear();
 #if defined(ESP8266)
-    if (_dnsServerPtr)
+    if (_dns_server_ptr)
     {
-        _dnsServerPtr.reset();
-        _dnsServerPtr = nullptr;
+        _dns_server_ptr.reset();
+        _dns_server_ptr = nullptr;
     }
 #endif
 }
@@ -143,16 +141,16 @@ void ESPFormClass::setIP(IPAddress local_ip, IPAddress gateway, IPAddress subnet
 
 void ESPFormClass::setAP(const char *ssid, const char *psw, int channel, int ssid_hidden, int max_connection)
 {
-    _apStarted = false;
-    _apSSID = ssid;
-    _apPSW = psw;
+    _ap_started = false;
+    _ap_ssid = ssid;
+    _ap_psw = psw;
     _channel = channel;
     _ssid_hidden = ssid_hidden;
     _max_connection = max_connection;
 
-    _skipSelfAP = false;
+    _skip_self_ap = false;
     WiFiInfo t;
-    scanWiFi(t, 10);
+    int_scanWiFi(&t, NULL, 10);
     for (size_t i = 0; i < t.count(); i++)
     {
         if (strcmp(t.getInfo(i).ssid.c_str(), ssid) == 0)
@@ -160,23 +158,23 @@ void ESPFormClass::setAP(const char *ssid, const char *psw, int channel, int ssi
 
 #if defined(ESP32)
             uint64_t chipId = ESP.getEfuseMac();
-            char *_buf = newPtr(23);
-            snprintf(_buf, 23, "%s-%04X%08X", _apSSID.c_str(), (uint16_t)(chipId >> 32), (uint32_t)chipId);
-            _apSSID = _buf;
-            delPtr(_buf);
+            char *_buf = newS(23);
+            snprintf(_buf, 23, "%s-%04X%08X", _ap_ssid.c_str(), (uint16_t)(chipId >> 32), (uint32_t)chipId);
+            _ap_ssid = _buf;
+            delS(_buf);
 #elif defined(ESP8266)
             uint32_t chipId = ESP.getChipId();
-            char *_buf = newPtr(23);
-            snprintf(_buf, 23, "%s-%04X", _apSSID.c_str(), chipId);
-            _apSSID = _buf;
-            delPtr(_buf);
+            char *_buf = newS(23);
+            snprintf(_buf, 23, "%s-%04X", _ap_ssid.c_str(), chipId);
+            _ap_ssid = _buf;
+            delS(_buf);
 #endif
 
             break;
         }
     }
     t.clear();
-    _skipSelfAP = true;
+    _skip_self_ap = true;
 }
 
 void ESPFormClass::begin(ElementEventCallback eventCallback, IdleTimeoutCallback timeoutCallback, unsigned long timeout, bool debug)
@@ -186,11 +184,12 @@ void ESPFormClass::begin(ElementEventCallback eventCallback, IdleTimeoutCallback
     _elementEventCallback = std::move(eventCallback);
     _idle_to._idleTimeoutCallback = std::move(timeoutCallback);
     _idle_to._idleTimeTimeout = timeout;
-    _webSocketPtr.reset(new WebSocketsServer(webSocketPort));
+    _web_socket_ptr.reset(new WebSocketsServer(_web_socket_port));
+
 #if defined(ESP32)
-    _webServerPtr.reset(new WebServer(webServerPort));
+    _web_server_ptr.reset(new WebServer(_web_server_port));
 #elif defined(ESP8266)
-    _webServerPtr.reset(new ESP8266WebServer(webServerPort));
+    _web_server_ptr.reset(new ESP8266WebServer(_web_server_port));
 #endif
     WiFi.setAutoReconnect(true);
 }
@@ -199,147 +198,117 @@ void ESPFormClass::addElementEventListener(const String &id, ESPFormEventType ev
 {
     prepareConfig();
 
-    ESPJson json;
+    FirebaseJson json;
     std::string s;
-    p_memCopy(s, ESPFORM_STR_16);
+    appendP(s, espform_str_16);
     json.add(s.c_str(), id);
-    p_memCopy(s, ESPFORM_STR_17, true);
+    appendP(s, espform_str_17, true);
     json.add(s.c_str(), (int)event);
-    p_memCopy(s, ESPFORM_STR_18, true);
+    appendP(s, espform_str_18, true);
     if (defaultValue != NULL)
         json.add(s.c_str(), defaultValue);
     else
         json.add(s.c_str());
-    _config->add(json);
+    _form_config->add(json);
 }
 
 void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorageType storagetype)
 {
     prepareConfig();
 
-    if (_config->size() == 0)
+    if (_form_config->size() == 0)
         return;
 
-    ESPJson json;
+    FirebaseJson json;
     std::string s;
-    p_memCopy(s, ESPFORM_STR_23);
-    json.add(s.c_str(), *_config);
+    appendP(s, espform_str_23);
+    json.add(s.c_str(), *_form_config);
     String js;
     json.toString(js, false);
 
-#ifdef ESP32
-    if (storagetype == ESPFormStorage_SPIFFS)
+    if (storagetype == esp_form_storage_flash)
     {
-        SPIFFS.begin(true);
-        file = SPIFFS.open(fileName, "w");
-        file.print(js);
-        file.close();
-    }
-    else if (storagetype == ESPFormStorage_SD)
-    {
-        if (!_sdOk)
-            _sdOk = sdTest();
-        if (_sdOk)
-        {
-            file = SD.open(fileName, FILE_WRITE);
-            file.print(js);
-            file.close();
-        }
-    }
-#elif defined(ESP8266)
-    if (storagetype == ESPFormStorage_SPIFFS)
-    {
-        SPIFFS.begin();
-        _file = SPIFFS.open(fileName, "w");
+        if (!_flash_rdy)
+            _flash_rdy = flashTest();
+
+        if (!_flash_rdy)
+            return;
+
+        _file = FLASH_FS.open(fileName, "w");
         _file.print(js);
         _file.close();
     }
-    else if (storagetype == ESPFormStorage_SD)
+    else if (storagetype == esp_form_storage_sd)
     {
-        if (!_sdOk)
-            _sdOk = sdTest();
-        if (_sdOk)
-        {
-            file = SD.open(fileName, FILE_WRITE);
-            file.print(js);
-            file.close();
-        }
+        if (!_sd_rdy)
+            _sd_rdy = sdTest(_file);
+
+        if (!_sd_rdy)
+            return;
+
+        _file = SD_FS.open(fileName, FILE_WRITE);
+        _file.print(js);
+        _file.close();
     }
-#endif
 }
 
 void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorageType storagetype)
 {
-    ESPJson js;
+    FirebaseJson js;
 
-#ifdef ESP32
-    if (storagetype == ESPFormStorage_SPIFFS)
+    if (storagetype == esp_form_storage_flash)
     {
-        SPIFFS.begin(true);
-        file = SPIFFS.open(fileName, "r");
-        js.setJsonData(file.readString());
-        file.close();
-    }
-    else if (storagetype == ESPFormStorage_SD)
-    {
-        if (!_sdOk)
-            _sdOk = sdTest();
-        if (_sdOk)
-        {
-            file = SD.open(fileName, FILE_READ);
-            js.setJsonData(file.readString());
-            file.close();
-        }
-    }
-#elif defined(ESP8266)
-    if (storagetype == ESPFormStorage_SPIFFS)
-    {
-        SPIFFS.begin();
-        _file = SPIFFS.open(fileName, "r");
+        if (!_flash_rdy)
+            _flash_rdy = flashTest();
+
+        if (!_flash_rdy)
+            return;
+
+        _file = FLASH_FS.open(fileName, "r");
         js.setJsonData(_file.readString());
         _file.close();
     }
-    else if (storagetype == ESPFormStorage_SD)
+    else if (storagetype == esp_form_storage_sd)
     {
-        if (!_sdOk)
-            _sdOk = sdTest();
-        if (_sdOk)
-        {
-            file = SD.open(fileName, FILE_READ);
-            js.setJsonData(file.readString());
-            file.close();
-        }
-    }
-#endif
+        if (!_sd_rdy)
+            _sd_rdy = sdTest(_file);
 
-    ESPJsonData d;
+        if (!_sd_rdy)
+            return;
+
+        _file = SD_FS.open(fileName, FILE_READ);
+        js.setJsonData(_file.readString());
+        _file.close();
+    }
+
+    FirebaseJsonData d;
     std::string s;
-    p_memCopy(s, ESPFORM_STR_13);
-    p_memCopy(s, ESPFORM_STR_23);
+    appendP(s, espform_str_13);
+    appendP(s, espform_str_23);
     js.get(d, s.c_str());
     if (d.success)
     {
-        _config.reset();
-        _config = nullptr;
-        _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
-        d.getArray(*_config);
+        _form_config.reset();
+        _form_config = nullptr;
+        _form_config = std::shared_ptr<FirebaseJsonArray>(new FirebaseJsonArray());
+        d.getArray(*_form_config);
     }
 }
 
-HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
+ESPFormClass::HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
 {
 
-    ESPJsonData jsonData;
+    FirebaseJsonData jsonData;
     bool res = false;
     std::string s;
     HTMLElementItem element;
 
     prepareConfig();
 
-    for (size_t k = 0; k < _config->size(); k++)
+    for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _config->get(jsonData, s.c_str());
+        _form_config->get(jsonData, s.c_str());
         if (jsonData.success)
         {
 
@@ -348,14 +317,14 @@ HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
                 element.id = id;
                 res = true;
                 getPath(1, k, s);
-                _config->get(jsonData, s.c_str());
+                _form_config->get(jsonData, s.c_str());
                 if (jsonData.success)
                 {
                     res &= true;
                     element.event = (ESPFormEventType)jsonData.intValue;
                 }
                 getPath(2, k, s);
-                _config->get(jsonData, s.c_str());
+                _form_config->get(jsonData, s.c_str());
                 if (jsonData.success)
                 {
                     res &= true;
@@ -372,15 +341,15 @@ HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
 void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 {
 
-    ESPJsonData jsonData;
+    FirebaseJsonData jsonData;
     std::string s;
 
     prepareConfig();
 
-    for (size_t k = 0; k < _config->size(); k++)
+    for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _config->get(jsonData, s.c_str());
+        _form_config->get(jsonData, s.c_str());
         if (jsonData.success)
         {
             if (element.id == jsonData.stringValue)
@@ -388,11 +357,11 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
                 if (element.event > 0)
                 {
                     getPath(1, k, s);
-                    _config->set(s.c_str(), (int)element.event);
+                    _form_config->set(s.c_str(), (int)element.event);
                 }
 
                 getPath(2, k, s);
-                _config->set(s.c_str(), element.value);
+                _form_config->set(s.c_str(), element.value);
                 break;
             }
         }
@@ -401,20 +370,20 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 
 void ESPFormClass::removeElementEventConfigItem(const String &id)
 {
-    ESPJsonData jsonData;
+    FirebaseJsonData jsonData;
     std::string s;
 
     prepareConfig();
 
-    for (size_t k = 0; k < _config->size(); k++)
+    for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _config->get(jsonData, s.c_str());
+        _form_config->get(jsonData, s.c_str());
         if (jsonData.success)
         {
             if (id == jsonData.stringValue)
             {
-                _config->remove(k);
+                _form_config->remove(k);
                 break;
             }
         }
@@ -424,13 +393,13 @@ void ESPFormClass::removeElementEventConfigItem(const String &id)
 void ESPFormClass::clearElementEventConfig()
 {
     prepareConfig();
-    _config->clear();
+    _form_config->clear();
 }
 
 void ESPFormClass::prepareConfig()
 {
-    if (!_config)
-        _config = std::shared_ptr<ESPJsonArray>(new ESPJsonArray());
+    if (!_form_config)
+        _form_config = std::shared_ptr<FirebaseJsonArray>(new FirebaseJsonArray());
 }
 
 String ESPFormClass::getElementEventString(ESPFormEventType event)
@@ -439,70 +408,70 @@ String ESPFormClass::getElementEventString(ESPFormEventType event)
     switch (event)
     {
     case EVENT_UNDEFINED:
-        p_memCopy(buf, ESPFORM_STR_39);
+        appendP(buf, espform_str_39);
         break;
     case EVENT_ON_CLICK:
-        p_memCopy(buf, ESPFORM_STR_40);
+        appendP(buf, espform_str_40);
         break;
     case EVENT_ON_DBLCLICK:
-        p_memCopy(buf, ESPFORM_STR_41);
+        appendP(buf, espform_str_41);
         break;
     case EVENT_ON_MOUSEDOWN:
-        p_memCopy(buf, ESPFORM_STR_42);
+        appendP(buf, espform_str_42);
         break;
     case EVENT_ON_MOUSEMOVE:
-        p_memCopy(buf, ESPFORM_STR_43);
+        appendP(buf, espform_str_43);
         break;
     case EVENT_ON_MOUSEOUT:
-        p_memCopy(buf, ESPFORM_STR_44);
+        appendP(buf, espform_str_44);
         break;
     case EVENT_ON_MOUSEOVER:
-        p_memCopy(buf, ESPFORM_STR_45);
+        appendP(buf, espform_str_45);
         break;
     case EVENT_ON_MOUSEUP:
-        p_memCopy(buf, ESPFORM_STR_46);
+        appendP(buf, espform_str_46);
         break;
     case EVENT_ON_MOUSEWHEEL:
-        p_memCopy(buf, ESPFORM_STR_47);
+        appendP(buf, espform_str_47);
         break;
     case EVENT_ON_WHEEL:
-        p_memCopy(buf, ESPFORM_STR_48);
+        appendP(buf, espform_str_48);
         break;
     case EVENT_ON_KEYDOWN:
-        p_memCopy(buf, ESPFORM_STR_49);
+        appendP(buf, espform_str_49);
         break;
     case EVENT_ON_KEYPRESS:
-        p_memCopy(buf, ESPFORM_STR_50);
+        appendP(buf, espform_str_50);
         break;
     case EVENT_ON_KEYUP:
-        p_memCopy(buf, ESPFORM_STR_51);
+        appendP(buf, espform_str_51);
         break;
     case EVENT_ON_CHANGE:
-        p_memCopy(buf, ESPFORM_STR_52);
+        appendP(buf, espform_str_52);
         break;
     case EVENT_ON_SUBMIT:
-        p_memCopy(buf, ESPFORM_STR_53);
+        appendP(buf, espform_str_53);
         break;
     case EVENT_ON_INPUT:
-        p_memCopy(buf, ESPFORM_STR_54);
+        appendP(buf, espform_str_54);
         break;
     case EVENT_ON_FOCUS:
-        p_memCopy(buf, ESPFORM_STR_55);
+        appendP(buf, espform_str_55);
         break;
     case EVENT_ON_CONTEXTMENU:
-        p_memCopy(buf, ESPFORM_STR_56);
+        appendP(buf, espform_str_56);
         break;
     case EVENT_ON_SELECT:
-        p_memCopy(buf, ESPFORM_STR_57);
+        appendP(buf, espform_str_57);
         break;
     case EVENT_ON_SEARCH:
-        p_memCopy(buf, ESPFORM_STR_58);
+        appendP(buf, espform_str_58);
         break;
     case EVENT_ON_RESET:
-        p_memCopy(buf, ESPFORM_STR_59);
+        appendP(buf, espform_str_59);
         break;
     case EVENT_ON_INVALID:
-        p_memCopy(buf, ESPFORM_STR_60);
+        appendP(buf, espform_str_60);
         break;
 
     default:
@@ -519,22 +488,22 @@ String ESPFormClass::getWiFiEncrytionTypeString(EncriptionType encType)
     switch (encType)
     {
     case WIFI_AUTH_WEP:
-        p_memCopy(buf, ESPFORM_STR_63);
+        appendP(buf, espform_str_63);
         break;
     case WIFI_AUTH_WPA_PSK:
-        p_memCopy(buf, ESPFORM_STR_68);
+        appendP(buf, espform_str_68);
         break;
     case WIFI_AUTH_WPA2_PSK:
-        p_memCopy(buf, ESPFORM_STR_69);
+        appendP(buf, espform_str_69);
         break;
     case WIFI_AUTH_WPA_WPA2_PSK:
-        p_memCopy(buf, ESPFORM_STR_70);
+        appendP(buf, espform_str_70);
         break;
     case WIFI_AUTH_WPA2_ENTERPRISE:
-        p_memCopy(buf, ESPFORM_STR_71);
+        appendP(buf, espform_str_71);
         break;
     case WIFI_AUTH_MAX:
-        p_memCopy(buf, ESPFORM_STR_62);
+        appendP(buf, espform_str_62);
         break;
     default:
         break;
@@ -543,19 +512,19 @@ String ESPFormClass::getWiFiEncrytionTypeString(EncriptionType encType)
     switch (encType)
     {
     case ENC_TYPE_WEP:
-        p_memCopy(buf, ESPFORM_STR_63);
+        appendP(buf, espform_str_63);
         break;
     case ENC_TYPE_TKIP:
-        p_memCopy(buf, ESPFORM_STR_64);
+        appendP(buf, espform_str_64);
         break;
     case ENC_TYPE_CCMP:
-        p_memCopy(buf, ESPFORM_STR_65);
+        appendP(buf, espform_str_65);
         break;
     case ENC_TYPE_NONE:
-        p_memCopy(buf, ESPFORM_STR_66);
+        appendP(buf, espform_str_66);
         break;
     case ENC_TYPE_AUTO:
-        p_memCopy(buf, ESPFORM_STR_67);
+        appendP(buf, espform_str_67);
         break;
     default:
         break;
@@ -568,67 +537,68 @@ String ESPFormClass::getWiFiEncrytionTypeString(EncriptionType encType)
 void ESPFormClass::getElementContent(const char *id)
 {
     std::string s;
-    p_memCopy(s, ESPFORM_STR_19);
+    appendP(s, espform_str_19);
     s += id;
-    p_memCopy(s, ESPFORM_STR_22);
+    appendP(s, espform_str_22);
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_73);
+        char *b = strP(espform_str_73);
         Serial.println(b);
-        delPtr(b);
+        delS(b);
     }
 
-    _webSocketPtr->broadcastTXT(s.c_str(), s.length());
+    _web_socket_ptr->broadcastTXT(s.c_str(), s.length());
 }
 
 void ESPFormClass::setElementContent(const char *id, const String &content)
 {
     std::string s;
-    p_memCopy(s, ESPFORM_STR_20);
+    appendP(s, espform_str_20);
     s += id;
-    p_memCopy(s, ESPFORM_STR_21);
+    appendP(s, espform_str_21);
     s += content.c_str();
-    p_memCopy(s, ESPFORM_STR_22);
+    appendP(s, espform_str_22);
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_74);
+        char *b = strP(espform_str_74);
         Serial.println(b);
-        delPtr(b);
+        delS(b);
     }
 
-    _webSocketPtr->broadcastTXT(s.c_str(), s.length());
+    _web_socket_ptr->broadcastTXT(s.c_str(), s.length());
 }
 
 void ESPFormClass::runScript(const String &script)
 {
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_75);
+        char *b = strP(espform_str_75);
         Serial.println(b);
-        delPtr(b);
+        Serial.println(script.c_str());
+        delS(b);
     }
-    _webSocketPtr->broadcastTXT(script.c_str(), script.length());
+    _web_socket_ptr->broadcastTXT(script.c_str(), script.length());
 }
 
 void ESPFormClass::getPath(uint8_t type, int index, std::string &buf)
 {
-    char *t = getIntString(index);
-    p_memCopy(buf, ESPFORM_STR_14, true);
+    char *t = intStr(index);
+    appendP(buf, espform_str_14, true);
     buf += t;
-    delPtr(t);
-    p_memCopy(buf, ESPFORM_STR_15);
+    delS(t);
+    appendP(buf, espform_str_15);
 
     switch (type)
     {
     case 0:
-        p_memCopy(buf, ESPFORM_STR_16);
+        appendP(buf, espform_str_16);
         break;
     case 1:
-        p_memCopy(buf, ESPFORM_STR_17);
+        appendP(buf, espform_str_17);
         break;
 
     case 2:
-        p_memCopy(buf, ESPFORM_STR_18);
+        appendP(buf, espform_str_18);
         break;
 
     default:
@@ -638,97 +608,105 @@ void ESPFormClass::getPath(uint8_t type, int index, std::string &buf)
 
 void ESPFormClass::stopServer()
 {
-
-    if (_webSocketPtr)
+    if (_web_socket_ptr)
     {
-        _webSocketPtr->disconnect();
-        _webSocketPtr->close();
+        _web_socket_ptr->disconnect();
+        _web_socket_ptr->close();
     }
-    if (_webServerPtr)
-        _webServerPtr->close();
+    if (_web_server_ptr)
+        _web_server_ptr->close();
 
-    _apStarted = false;
+    _ap_started = false;
     _idle_to._serverStarted = false;
+    _idle_to._serverRun = false;
     _idle_to._idleTime = 0;
     _idle_to._clientCount = 0;
     _idle_to._idleStarted = false;
-    WiFi.softAPdisconnect(true);
-    WiFi.disconnect(true);
-    WiFi.setAutoReconnect(true);
 }
 
 void ESPFormClass::startServer()
 {
+    stopServer();
 
-    if (!_apStarted && _apSSID.length() > 0 && _apSSID.length() < 32 && _apPSW.length() >= 8 && _apPSW.length() < 64)
+    if (!_ap_started && _ap_ssid.length() > 0 && _ap_ssid.length() < 32 && _ap_psw.length() >= 8 && _ap_psw.length() < 64)
     {
         startAP();
         startDNSServer();
-        _apStarted = true;
+        _ap_started = true;
     }
     if (!_idle_to._serverStarted)
     {
         startWebSocket();
         startWebServer();
-        if (!_taskCreated)
+        if (!_task_created)
+        {
+            _idle_to._serverRun = true;
             serverRun();
+        }
+
         _idle_to._serverStarted = true;
     }
 }
 
 void ESPFormClass::startAP()
 {
+    stopAP();
+
     if (_ipConfig)
     {
         if (!WiFi.softAPConfig(_ip, _gateway, _subnet) && _debug)
         {
-            char *b = getPGMString(ESPFORM_STR_76);
+            char *b = strP(espform_str_76);
             Serial.println(b);
-            delPtr(b);
+            delS(b);
             return;
         }
     }
 
     WiFi.enableAP(true);
 
-    if (WiFi.softAP(_apSSID.c_str(), _apPSW.c_str(), _channel, _ssid_hidden, _max_connection))
+    if (WiFi.softAP(_ap_ssid.c_str(), _ap_psw.c_str(), _channel, _ssid_hidden, _max_connection))
     {
         IPAddress address = WiFi.softAPIP();
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_77);
-            Serial.printf(b, _apSSID.c_str(), _apPSW.c_str(), address.toString().c_str());
-            delPtr(b);
+            char *b = strP(espform_str_77);
+            Serial.printf(b, _ap_ssid.c_str(), _ap_psw.c_str(), address.toString().c_str());
+            delS(b);
         }
     }
     else
     {
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_78);
+            char *b = strP(espform_str_78);
             Serial.println(b);
-            delPtr(b);
+            delS(b);
         }
     }
+}
+
+void ESPFormClass::stopAP()
+{
+    WiFi.softAPdisconnect(true);
 }
 
 void ESPFormClass::startDNSServer()
 {
 #ifdef ESP32
     std::string s;
-    p_memCopy(s, ESPFORM_STR_4);
+    appendP(s, espform_str_4);
     MDNS.begin(s.c_str());
 #elif defined(ESP8266)
-
-    _dnsServerPtr.reset(new DNSServer());
-    _dnsServerPtr->setErrorReplyCode(DNSReplyCode::NoError);
-    _dnsServerPtr->start(dnsPort, "*", WiFi.softAPIP());
+    _dns_server_ptr.reset(new DNSServer());
+    _dns_server_ptr->setErrorReplyCode(DNSReplyCode::NoError);
+    _dns_server_ptr->start(_dns_port, "*", WiFi.softAPIP());
 
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_79);
+        char *b = strP(espform_str_79);
         Serial.println(b);
-        delPtr(b);
+        delS(b);
     }
 #endif
 }
@@ -737,45 +715,47 @@ void ESPFormClass::startWebServer()
 {
 
 #ifdef ESP32
-    _webServerPtr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
+    _web_server_ptr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
 #elif defined(ESP8266)
     std::string s;
-    p_memCopy(s, ESPFORM_STR_24);
-    _webServerPtr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
+    appendP(s, espform_str_24);
+    _web_server_ptr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
 #endif
-    _webServerPtr->onNotFound(std::bind(&ESPFormClass::handleNotFound, this));
-    _webServerPtr->begin();
+    _web_server_ptr->onNotFound(std::bind(&ESPFormClass::handleNotFound, this));
+    _web_server_ptr->begin();
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_80);
+        char *b = strP(espform_str_80);
         Serial.println(b);
-        delPtr(b);
+        delS(b);
     }
 }
 
 void ESPFormClass::startWebSocket()
 {
-
-    _webSocketPtr->begin();
-    _webSocketPtr->onEvent(std::bind(&ESPFormClass::webSocketEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-    if (_debug)
+    if (_web_socket_ptr)
     {
-        char *b = getPGMString(ESPFORM_STR_81);
-        Serial.println(b);
-        delPtr(b);
+        _web_socket_ptr->begin();
+        _web_socket_ptr->onEvent(std::bind(&ESPFormClass::webSocketEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+        if (_debug)
+        {
+            char *b = strP(espform_str_81);
+            Serial.println(b);
+            delS(b);
+        }
     }
 }
 
 void ESPFormClass::handleNotFound()
 {
-    if (!isIP(_webServerPtr->hostHeader()))
+    if (!isIP(_web_server_ptr->hostHeader()))
         goLandingPage();
     else if (!handleFileRead())
     {
         std::string s, s2;
-        p_memCopy(s, ESPFORM_STR_7);
-        p_memCopy(s2, ESPFORM_STR_38);
-        _webServerPtr->send(404, s.c_str(), s2.c_str());
+        appendP(s, espform_str_7);
+        appendP(s2, espform_str_38);
+        _web_server_ptr->send(404, s.c_str(), s2.c_str());
     }
 }
 
@@ -785,10 +765,10 @@ void ESPFormClass::getMIME(const String &ext, String &mime)
     char *tmp = new char[50];
     for (int i = 0; i < maxType; i++)
     {
-        if (strcmp_P(ext.c_str(), MIMEInfo[i].endsWith) == 0)
+        if (strcmp_P(ext.c_str(), ESPForm_MIMEInfo[i].endsWith) == 0)
         {
             memset(tmp, 0, 50);
-            strcpy_P(tmp, MIMEInfo[i].mimeType);
+            strcpy_P(tmp, ESPForm_MIMEInfo[i].mimeType);
             mime = tmp;
             break;
         }
@@ -800,9 +780,9 @@ bool ESPFormClass::handleFileRead()
 {
     bool res = false;
     std::string s1, s2, s3, s4, s5;
-    p_memCopy(s1, ESPFORM_STR_13);
-    p_memCopy(s2, ESPFORM_STR_12);
-    String path = _webServerPtr->uri();
+    appendP(s1, espform_str_13);
+    appendP(s2, espform_str_12);
+    String path = _web_server_ptr->uri();
 
     prepareConfig();
 
@@ -811,23 +791,23 @@ bool ESPFormClass::handleFileRead()
 
     if (_debug)
     {
-        char *b = getPGMString(ESPFORM_STR_82);
+        char *b = strP(espform_str_82);
         Serial.print(b);
-        delPtr(b);
+        delS(b);
         Serial.println(path);
     }
 
-    p_memCopy(s1, ESPFORM_STR_10, true);
-    p_memCopy(s2, ESPFORM_STR_11, true);
+    appendP(s1, espform_str_10, true);
+    appendP(s2, espform_str_11, true);
 
-    _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
+    _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
 
-    p_memCopy(s1, ESPFORM_STR_8, true);
-    p_memCopy(s2, ESPFORM_STR_9, true);
+    appendP(s1, espform_str_8, true);
+    appendP(s2, espform_str_9, true);
 
-    p_memCopy(s3, ESPFORM_STR_25, true);
-    p_memCopy(s4, ESPFORM_STR_26, true);
-    p_memCopy(s5, ESPFORM_STR_27, true);
+    appendP(s3, espform_str_25, true);
+    appendP(s4, espform_str_26, true);
+    appendP(s5, espform_str_27, true);
 
     if (strcmp(path.c_str(), s3.c_str()) == 0)
     {
@@ -836,7 +816,7 @@ bool ESPFormClass::handleFileRead()
         for (size_t i = 0; i < _file_info.size(); i++)
         {
             if (_file_info[i].name.find_first_of("/") != 0)
-                p_memCopy(filename, ESPFORM_STR_13, true);
+                appendP(filename, espform_str_13, true);
             filename += _file_info[i].name.c_str();
 
             if (filename == s3)
@@ -848,60 +828,60 @@ bool ESPFormClass::handleFileRead()
 
         if (!fvc)
         {
-            _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-            _webServerPtr->send_P(200, MIMEInfo[ico].mimeType, (const char *)favicon_gz, sizeof(favicon_gz));
+            _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
+            _web_server_ptr->send_P(200, ESPForm_MIMEInfo[ico].mimeType, (const char *)favicon_gz, sizeof(favicon_gz));
             return true;
         }
     }
 
     if (strcmp(path.c_str(), s4.c_str()) == 0)
     {
-        _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-        _webServerPtr->send_P(200, MIMEInfo[js].mimeType, (const char *)espform_js_gz, sizeof(espform_js_gz));
+        _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
+        _web_server_ptr->send_P(200, ESPForm_MIMEInfo[js].mimeType, (const char *)espform_js_gz, sizeof(espform_js_gz));
         res = true;
     }
     else if (strcmp(path.c_str(), s5.c_str()) == 0)
     {
         String ap = "";
-        ESPJsonData jsonData;
+        FirebaseJsonData jsonData;
         String id;
         int event = 0;
         String value;
         std::string s, s2, s3, s4, s5, s6, s7;
-        p_memCopy(s2, ESPFORM_STR_32);
-        p_memCopy(s3, ESPFORM_STR_33);
-        p_memCopy(s4, ESPFORM_STR_34);
-        p_memCopy(s5, ESPFORM_STR_35);
-        p_memCopy(s6, ESPFORM_STR_36);
-        p_memCopy(s7, ESPFORM_STR_37);
+        appendP(s2, espform_str_32);
+        appendP(s3, espform_str_33);
+        appendP(s4, espform_str_34);
+        appendP(s5, espform_str_35);
+        appendP(s6, espform_str_36);
+        appendP(s7, espform_str_37);
 
-        for (size_t k = 0; k < _config->size(); k++)
+        for (size_t k = 0; k < _form_config->size(); k++)
         {
             getPath(0, k, s);
-            _config->get(jsonData, s.c_str());
+            _form_config->get(jsonData, s.c_str());
             if (jsonData.success)
                 id = jsonData.stringValue;
             getPath(1, k, s);
-            _config->get(jsonData, s.c_str());
+            _form_config->get(jsonData, s.c_str());
             if (jsonData.success)
                 event = jsonData.intValue;
             getPath(2, k, s);
-            _config->get(jsonData, s.c_str());
+            _form_config->get(jsonData, s.c_str());
             if (jsonData.success)
                 value = jsonData.stringValue;
 
-            if (value.length() > 0 && jsonData.typeNum != ESPJson::JSON_NULL)
+            if (value.length() > 0 && jsonData.typeNum != FirebaseJson::JSON_NULL)
                 ap += s2.c_str() + id + s3.c_str() + value + s4.c_str();
 
-            char *a = getIntString(event);
+            char *a = intStr(event);
             ap += s5.c_str() + id + s6.c_str() + a + s7.c_str();
-            delPtr(a);
+            delS(a);
         }
 
 #ifdef ESP32
-        _webServerPtr->send(200, MIMEInfo[js].mimeType, ap);
+        _web_server_ptr->send(200, ESPForm_MIMEInfo[js].mimeType, ap);
 #elif defined(ESP8266)
-        _webServerPtr->send(200, MIMEInfo[js].mimeType, ap.c_str(), ap.length());
+        _web_server_ptr->send(200, ESPForm_MIMEInfo[js].mimeType, ap.c_str(), ap.length());
 #endif
         res = true;
     }
@@ -913,7 +893,7 @@ bool ESPFormClass::handleFileRead()
         for (size_t i = 0; i < _file_info.size(); i++)
         {
             if (_file_info[i].name.find_first_of("/") != 0)
-                p_memCopy(filename, ESPFORM_STR_13, true);
+                appendP(filename, espform_str_13, true);
             filename += _file_info[i].name.c_str();
 
             if (path.endsWith(filename.c_str()))
@@ -925,86 +905,56 @@ bool ESPFormClass::handleFileRead()
                 {
                     getMIME(ext, mime);
 
-                    ESPJson js;
-                    ESPJsonData d;
-#ifdef ESP32
-                    if (_file_info[i].storageType == ESPFormStorage_SPIFFS)
+                    FirebaseJson js;
+                    FirebaseJsonData d;
+                    if (_file_info[i].storageType == esp_form_storage_flash)
                     {
-                        SPIFFS.begin(true);
-                        if (SPIFFS.exists(_file_info[i].path.c_str()))
+                        if (!_flash_rdy)
+                            _flash_rdy = flashTest();
+                        if (_flash_rdy)
                         {
-                            file = SPIFFS.open(_file_info[i].path.c_str(), "r");
-                            _webServerPtr->streamFile(file, mime.c_str());
-                            file.close();
-                            res = true;
-                        }
-                    }
-                    else if (_file_info[i].storageType == ESPFormStorage_SD)
-                    {
-                        if (!_sdOk)
-                            _sdOk = sdTest();
-                        if (_sdOk)
-                        {
-                            if (SD.exists(_file_info[i].path.c_str()))
+                            if (FLASH_FS.exists(_file_info[i].path.c_str()))
                             {
-                                file = SD.open(_file_info[i].path.c_str(), FILE_READ);
-                                _webServerPtr->streamFile(file, mime.c_str());
-                                file.close();
-                                res = true;
-                            }
-                        }
-                    }
-
-#elif defined(ESP8266)
-
-                    if (_file_info[i].storageType == ESPFormStorage_SPIFFS)
-                    {
-                        if (SPIFFS.begin())
-                        {
-                            if (SPIFFS.exists(_file_info[i].path.c_str()))
-                            {
-                                _file = SPIFFS.open(_file_info[i].path.c_str(), "r");
-                                _webServerPtr->streamFile(_file, mime.c_str());
+                                _file = FLASH_FS.open(_file_info[i].path.c_str(), "r");
+                                _web_server_ptr->streamFile(_file, mime.c_str());
                                 _file.close();
                                 res = true;
                             }
                         }
                     }
-                    else if (_file_info[i].storageType == ESPFormStorage_SD)
+                    else if (_file_info[i].storageType == esp_form_storage_sd)
                     {
-                        if (!_sdOk)
-                            _sdOk = sdTest();
-                        if (_sdOk)
+                        if (!_sd_rdy)
+                            _sd_rdy = sdTest(_file);
+                        if (_sd_rdy)
                         {
-                            if (SD.exists(_file_info[i].path.c_str()))
+                            if (SD_FS.exists(_file_info[i].path.c_str()))
                             {
-                                file = SD.open(_file_info[i].path.c_str(), FILE_READ);
-                                _webServerPtr->streamFile(file, mime.c_str());
-                                file.close();
+                                _file = SD_FS.open(_file_info[i].path.c_str(), FILE_READ);
+                                _web_server_ptr->streamFile(_file, mime.c_str());
+                                _file.close();
                                 res = true;
                             }
                         }
                     }
-
-#endif
                 }
                 else if (_file_info[i].content && _file_info[i].path.length() == 0)
                 {
 
-                    p_memCopy(s3, ESPFORM_STR_28, true);
+                    appendP(s3, espform_str_28, true);
                     if (strcmp(ext.c_str(), s3.c_str()) == 0)
                     {
 
-                        if (!_webServerPtr->hasArg("espf"))
+                        if (!_web_server_ptr->hasArg("espf"))
                         {
-                            _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-                            _webServerPtr->send_P(200, MIMEInfo[html].mimeType, (const char *)loader_html_gz, sizeof(loader_html_gz));
+                            _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
+                            _web_server_ptr->send_P(200, ESPForm_MIMEInfo[html].mimeType, (const char *)loader_html_gz, sizeof(loader_html_gz));
                         }
                         else
                         {
                             if (_file_info[i].gzip)
-                                _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-                            _webServerPtr->send_P(200, MIMEInfo[html].mimeType, _file_info[i].content, _file_info[i].len);
+                                _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
+                            _web_server_ptr->send_P(200, ESPForm_MIMEInfo[html].mimeType, _file_info[i].content, _file_info[i].len);
                         }
 
                         res = true;
@@ -1013,8 +963,8 @@ bool ESPFormClass::handleFileRead()
                     {
                         getMIME(ext, mime);
                         if (_file_info[i].gzip)
-                            _webServerPtr->sendHeader(s1.c_str(), s2.c_str());
-                        _webServerPtr->send_P(200, mime.c_str(), _file_info[i].content, _file_info[i].len);
+                            _web_server_ptr->sendHeader(s1.c_str(), s2.c_str());
+                        _web_server_ptr->send_P(200, mime.c_str(), _file_info[i].content, _file_info[i].len);
                         res = true;
                         break;
                     }
@@ -1029,12 +979,12 @@ bool ESPFormClass::handleFileRead()
 void ESPFormClass::goLandingPage()
 {
     std::string s1, s2, s3;
-    p_memCopy(s1, ESPFORM_STR_5);
-    p_memCopy(s2, ESPFORM_STR_6);
-    s2 += toIpString(_webServerPtr->client().localIP()).c_str();
-    p_memCopy(s3, ESPFORM_STR_7);
-    _webServerPtr->sendHeader(s1.c_str(), s2.c_str(), true);
-    _webServerPtr->send(302, s3.c_str(), "");
+    appendP(s1, espform_str_5);
+    appendP(s2, espform_str_6);
+    s2 += toIpString(_web_server_ptr->client().localIP()).c_str();
+    appendP(s3, espform_str_7);
+    _web_server_ptr->sendHeader(s1.c_str(), s2.c_str(), true);
+    _web_server_ptr->send(302, s3.c_str(), "");
 }
 
 bool ESPFormClass::isIP(String str)
@@ -1062,9 +1012,9 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
     case WStype_ERROR:
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_83);
+            char *b = strP(espform_str_83);
             Serial.printf(b, num);
-            delPtr(b);
+            delS(b);
         }
         break;
     case WStype_BIN:
@@ -1090,9 +1040,9 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
         }
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_84);
+            char *b = strP(espform_str_84);
             Serial.printf(b, num);
-            delPtr(b);
+            delS(b);
         }
 
         break;
@@ -1102,41 +1052,41 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
         _idle_to._clientCount++;
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_85);
+            char *b = strP(espform_str_85);
             Serial.printf(b, num);
-            delPtr(b);
+            delS(b);
         }
 
         break;
     case WStype_TEXT:
 
-        ESPJson json;
-        ESPJsonData jsonData;
+        FirebaseJson json;
+        FirebaseJsonData jsonData;
         json.setJsonData((char *)payload);
         String type, id, value;
         uint8_t event = 0;
         std::string s, s2;
 
-        p_memCopy(s, ESPFORM_STR_30, true);
+        appendP(s, espform_str_30, true);
         json.get(jsonData, s.c_str());
         if (jsonData.success)
             event = jsonData.intValue;
 
-        p_memCopy(s, ESPFORM_STR_29, true);
+        appendP(s, espform_str_29, true);
         json.get(jsonData, s.c_str());
         if (jsonData.success)
             type = jsonData.stringValue;
-        p_memCopy(s, ESPFORM_STR_16, true);
+        appendP(s, espform_str_16, true);
         json.get(jsonData, s.c_str());
         if (jsonData.success)
             id = jsonData.stringValue;
-        p_memCopy(s, ESPFORM_STR_18, true);
+        appendP(s, espform_str_18, true);
         json.get(jsonData, s.c_str());
         if (jsonData.success)
             value = jsonData.stringValue;
 
-        p_memCopy(s, ESPFORM_STR_30, true);
-        p_memCopy(s2, ESPFORM_STR_31, true);
+        appendP(s, espform_str_30, true);
+        appendP(s2, espform_str_31, true);
 
         if (strcmp(type.c_str(), s.c_str()) == 0 || strcmp(type.c_str(), s2.c_str()) == 0)
         {
@@ -1152,9 +1102,9 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
         }
         if (_debug)
         {
-            char *b = getPGMString(ESPFORM_STR_86);
+            char *b = strP(espform_str_86);
             Serial.printf(b, lenght, num);
-            delPtr(b);
+            delS(b);
         }
 
         break;
@@ -1171,18 +1121,18 @@ void ESPFormClass::serverRun()
 
     _taskName = "task_";
     _taskName += String(objIndex).c_str();
-    _webSocket.push_back(*_webSocketPtr.get());
-    _webServer.push_back(*_webServerPtr.get());
+    _webSocket.push_back(*_web_socket_ptr.get());
+    _webServer.push_back(*_web_server_ptr.get());
     _idleTimeoutInfo.push_back(_idle_to);
     _index = objIndex - 1;
 
-    TaskFunction_t taskCode = [](void *param) {
-        unsigned long _lastReconnectMillis = 0;
-        unsigned long _reconnectTimeout = 10000;
+    static ESPFormClass *_this = this;
 
+    TaskFunction_t taskCode = [](void *param) {
         for (;;)
         {
-            yield();
+            if (!_idleTimeoutInfo[objIndex - 1].get()._serverRun)
+                break;
 
             if (_idleTimeoutInfo[objIndex - 1].get()._serverStarted)
             {
@@ -1207,42 +1157,29 @@ void ESPFormClass::serverRun()
             }
             else
             {
-
-                if (WiFi.status() != WL_CONNECTED)
-                {
-                    if (_lastReconnectMillis == 0)
-                    {
-                        WiFi.reconnect();
-                        _lastReconnectMillis = millis();
-                    }
-                    if (WiFi.status() != WL_CONNECTED)
-                    {
-                        if (millis() - _lastReconnectMillis > _reconnectTimeout)
-                            _lastReconnectMillis = 0;
-                    }
-                    else
-                        _lastReconnectMillis = 0;
-                }
+                _this->reconnect();
             }
 
-            vTaskDelay(10);
-        }
+            yield();
 
+            vTaskDelay(1 / portTICK_PERIOD_MS);
+        }
+        _this->_xTaskHandle = NULL;
         vTaskDelete(NULL);
     };
 
     BaseType_t xReturned = xTaskCreatePinnedToCore(taskCode, _taskName.c_str(), 10000, NULL, 3, &_xTaskHandle, 1);
 
-    _taskCreated = xReturned == pdPASS;
+    _task_created = xReturned == pdPASS;
 
 #elif defined(ESP8266)
-    if (_apStarted)
-        _dnsServerPtr->processNextRequest();
+    if (_ap_started)
+        _dns_server_ptr->processNextRequest();
 
     if (_idle_to._serverStarted)
     {
-        _webSocketPtr->loop();
-        _webServerPtr->handleClient();
+        _web_socket_ptr->loop();
+        _web_server_ptr->handleClient();
 
         if (_idle_to._clientCount == 0 && _idle_to._idleTimeoutCallback != nullptr && !_idle_to._idleStarted)
         {
@@ -1264,87 +1201,133 @@ void ESPFormClass::serverRun()
     {
         reconnect();
     }
-    _taskCreated = true;
-    _callback.set_scheduled_callback(std::bind(&ESPFormClass::serverRun, this));
+    _task_created = true;
+    set_scheduled_callback(std::bind(&ESPFormClass::serverRun, this));
 #endif
 }
 
-#if defined(ESP32)
-bool ESPFormClass::sdBegin(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t ss)
+#if defined(ESP8266)
+void ESPFormClass::set_scheduled_callback(callback_function_t callback)
 {
-    _sck = sck;
-    _miso = miso;
-    _mosi = mosi;
-    _ss = ss;
-    _sdConfigSet = true;
-    SPI.begin(_sck, _miso, _mosi, _ss);
-    return SD.begin(_ss, SPI);
+    _callback_function = std::move([callback]() { schedule_function(callback); });
+    _callback_function();
 }
-
-bool ESPFormClass::sdBegin(void)
-{
-    _sdConfigSet = false;
-    return SD.begin();
-}
-#elif defined(ESP8266)
-bool ESPFormClass::sdBegin(uint8_t csPin)
-{
-    _sdPin = csPin;
-    return SD.begin(csPin);
-}
+#endif
 
 bool ESPFormClass::reconnect()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        if (_lastReconnectMillis == 0)
+        if (_last_recon_millis == 0)
         {
             WiFi.reconnect();
-            _lastReconnectMillis = millis();
+            _last_recon_millis = millis();
         }
         if (WiFi.status() != WL_CONNECTED)
         {
-            if (millis() - _lastReconnectMillis > _reconnectTimeout)
-                _lastReconnectMillis = 0;
+            if (millis() - _last_recon_millis > _reccon_tmo)
+                _last_recon_millis = 0;
             return false;
         }
         else
         {
-            _lastReconnectMillis = 0;
+            _last_recon_millis = 0;
         }
     }
     return WiFi.status() == WL_CONNECTED;
 }
-#endif
 
-bool ESPFormClass::sdTest()
+bool ESPFormClass::sdBegin(int8_t ss, int8_t sck, int8_t miso, int8_t mosi)
 {
-    File file;
-    std::string filepath;
-    p_memCopy(filepath, ESPFORM_STR_4);
-
+#if defined(CARD_TYPE_SD)
+    _sd_config.sck = sck;
+    _sd_config.miso = miso;
+    _sd_config.mosi = mosi;
+    _sd_config.ss = ss;
 #if defined(ESP32)
-    if (_sdConfigSet)
+    if (ss > -1)
     {
-        SPI.begin(_sck, _miso, _mosi, _ss);
-        SD.begin(_ss, SPI);
+        SPI.begin(sck, miso, mosi, ss);
+        return SD_FS.begin(ss, SPI);
     }
     else
-        SD.begin();
+        return SD_FS.begin();
 #elif defined(ESP8266)
-    SD.begin(_sdPin);
+    if (ss > -1)
+        return SD_FS.begin(ss);
+    else
+        return SD_FS.begin(SD_CS_PIN);
+#endif
+#endif
+}
+
+#if defined(ESP32)
+#if defined(CARD_TYPE_SD_MMC)
+bool ESPFormClass::sdBegin(const char *mountpoint, bool mode1bit, bool format_if_mount_failed)
+{
+    if (config)
+    {
+        _sd_config.sd_mmc_mountpoint = mountpoint;
+        _sd_config.sd_mmc_mode1bit = mode1bit;
+        _sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
+    }
+    return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
+}
+#endif
 #endif
 
-    file = SD.open(filepath.c_str(), FILE_WRITE);
+bool ESPFormClass::sdMMCBegin(const char *mountpoint, bool mode1bit, bool format_if_mount_failed)
+{
+#if defined(ESP32)
+#if defined(CARD_TYPE_SD_MMC)
+    _sd_config.sd_mmc_mountpoint = mountpoint;
+    _sd_config.sd_mmc_mode1bit = mode1bit;
+    _sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
+    return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
+#endif
+#endif
+    return false;
+}
+
+bool ESPFormClass::flashTest()
+{
+#if defined(ESP32)
+    if (FORMAT_FLASH == 1)
+        _flash_rdy = FLASH_FS.begin(true);
+    else
+        _flash_rdy = FLASH_FS.begin();
+#elif defined(ESP8266)
+    _flash_rdy = FLASH_FS.begin();
+#endif
+    return _flash_rdy;
+}
+
+bool ESPFormClass::sdTest(fs::File file)
+{
+    std::string filepath = "/sdtest01.txt";
+#if defined(CARD_TYPE_SD)
+    if (!sdBegin(_sd_config.ss, _sd_config.sck, _sd_config.miso, _sd_config.mosi))
+        return false;
+#endif
+#if defined(ESP32)
+#if defined(CARD_TYPE_SD_MMC)
+    if (!sdBegin(_sd_config.sd_mmc_mountpoint, _sd_config.sd_mmc_mode1bit, _sd_config.sd_mmc_format_if_mount_failed))
+        return false;
+#endif
+#endif
+    file = SD_FS.open(filepath.c_str(), FILE_WRITE);
     if (!file)
         return false;
 
     if (!file.write(32))
+    {
+        file.close();
         return false;
+    }
 
     file.close();
 
-    file = SD.open(filepath.c_str());
+    file = SD_FS.open(filepath.c_str());
     if (!file)
         return false;
 
@@ -1356,63 +1339,54 @@ bool ESPFormClass::sdTest()
             return false;
         }
     }
+    file.close();
 
-    SD.remove(filepath.c_str());
+    SD_FS.remove(filepath.c_str());
+
     std::string().swap(filepath);
+
+    _sd_rdy = true;
+
     return true;
 }
 
-char *ESPFormClass::getPGMString(PGM_P pgm)
+char *ESPFormClass::strP(PGM_P pgm)
 {
     size_t len = strlen_P(pgm) + 1;
-    char *buf = newPtr(len);
+    char *buf = newS(len);
     strcpy_P(buf, pgm);
     buf[len - 1] = 0;
     return buf;
 }
 
-void ESPFormClass::delPtr(char *p)
+void ESPFormClass::delS(char *p)
 {
     if (p != nullptr)
         delete[] p;
 }
 
-char *ESPFormClass::newPtr(size_t len)
+char *ESPFormClass::newS(size_t len)
 {
     char *p = new char[len];
     memset(p, 0, len);
     return p;
 }
 
-char *ESPFormClass::newPtr(char *p, size_t len)
+char *ESPFormClass::intStr(int value)
 {
-    delPtr(p);
-    p = newPtr(len);
-    return p;
-}
-
-char *ESPFormClass::newPtr(char *p, size_t len, char *d)
-{
-    delPtr(p);
-    p = newPtr(len);
-    strcpy(p, d);
-    return p;
-}
-char *ESPFormClass::getIntString(int value)
-{
-    char *buf = newPtr(36);
+    char *buf = newS(36);
     memset(buf, 0, 36);
     itoa(value, buf, 10);
     return buf;
 }
 
-void ESPFormClass::p_memCopy(std::string &buf, PGM_P p, bool empty)
+void ESPFormClass::appendP(std::string &buf, PGM_P p, bool empty)
 {
     if (empty)
         buf.clear();
-    char *b = getPGMString(p);
+    char *b = strP(p);
     buf += b;
-    delPtr(b);
+    delS(b);
 }
 
 uint8_t ESPFormClass::getRSSIasQuality(int RSSI)
@@ -1427,9 +1401,15 @@ uint8_t ESPFormClass::getRSSIasQuality(int RSSI)
     return quality;
 }
 
-void ESPFormClass::scanWiFi(WiFiInfo &result, uint8_t max, bool showHidden)
+void ESPFormClass::scanWiFi(WiFiScanResultItemCallback scanCallback, uint8_t max, bool showHidden)
 {
-    result._r.clear();
+    int_scanWiFi(nullptr, scanCallback, max, showHidden);
+}
+
+void ESPFormClass::int_scanWiFi(WiFiInfo *result, WiFiScanResultItemCallback scanCallback, uint8_t max, bool showHidden)
+{
+    if (result)
+        result->_r.clear();
     uint8_t netCount = WiFi.scanNetworks(false, showHidden);
     uint8_t *indices = new uint8_t[netCount];
     for (uint8_t i = 0; i < netCount; i++)
@@ -1460,15 +1440,19 @@ void ESPFormClass::scanWiFi(WiFiInfo &result, uint8_t max, bool showHidden)
     for (uint8_t i = 0; i < netCount; i++)
     {
 
-        if (strcmp(WiFi.SSID(indices[i]).c_str(), _apSSID.c_str()) == 0 && _skipSelfAP)
+        if (strcmp(WiFi.SSID(indices[i]).c_str(), _ap_ssid.c_str()) == 0 && _skip_self_ap)
             continue;
 
         if (indices[i] == -1)
             continue;
 
+        if (WiFi.SSID(indices[i]).length() == 0)
+            continue;
+
         uint8_t quality = getRSSIasQuality(WiFi.RSSI(indices[i]));
         if (quality > 1 && count < max)
         {
+
             count++;
             network_info_t r;
             r.ssid = WiFi.SSID(indices[i]);
@@ -1480,7 +1464,10 @@ void ESPFormClass::scanWiFi(WiFiInfo &result, uint8_t max, bool showHidden)
 
             r.quality = quality;
             r.channel = WiFi.channel(indices[i]);
-            result._r.push_back(r);
+            if (result)
+                result->_r.push_back(r);
+            else if (scanCallback)
+                scanCallback(r);
         }
     }
 }
@@ -1493,14 +1480,14 @@ size_t ESPFormClass::getClientCount()
 size_t ESPFormClass::getElementCount()
 {
     prepareConfig();
-    return _config->size();
+    return _form_config->size();
 }
 
 bool ESPFormClass::setClock(float offset)
 {
 
-    char *server1 = getPGMString(ESPFORM_STR_61);
-    char *server2 = getPGMString(ESPFORM_STR_61);
+    char *server1 = strP(espform_str_61);
+    char *server2 = strP(espform_str_61);
 
     configTime(offset * 3600, 0, server1, server2);
 
@@ -1515,8 +1502,8 @@ bool ESPFormClass::setClock(float offset)
         delay(100);
     }
 
-    delPtr(server1);
-    delPtr(server2);
+    delS(server1);
+    delS(server2);
     struct tm timeinfo;
 #if defined(ESP32)
     getLocalTime(&timeinfo);

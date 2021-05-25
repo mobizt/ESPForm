@@ -1,4 +1,4 @@
-# The ESPForm for Arduino v 1.0.1
+# The ESPForm for Arduino v 1.0.2
 
 
 The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
@@ -56,6 +56,8 @@ Finally start the web server with **`ESPForm.startServer`**.
 
 To stop the web server, calling **`ESPForm.stopServer`**.
 
+To stop the Access Point, calling **`ESPForm.stopAP`**.
+
 
 To control or send data to the client's web browser, using **`ESPForm.runScript`**.
 
@@ -63,9 +65,9 @@ To send the data from client to device using the javascript, calling the functio
 
 The event data from HTML Form Element will send to device (server) with this sendMessage function. 
 
-The event callback function on the device (sever) will receive this HTML Form Element's event data as **HTMLElementItem** type data.
+The event callback function on the device (sever) will receive this HTML Form Element's event data as **ESPFormClass::HTMLElementItem** type data.
 
-The **HTMLElementItem** data comprises of **id**, **value**, **type** and **event** properties. 
+The **ESPFormClass::HTMLElementItem** data comprises of **id**, **value**, **type** and **event** properties. 
 
 The id property is the HTML Form Element id attribute. The value property is the HTML Form Element value or innerText attribute. 
 
@@ -73,7 +75,7 @@ The type is the types of data e.g event (HTML Form Element event trigged) and ge
 
 The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick. 
 
-The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1. 
+The event property value is the number of ESPFormEventType enumeration e.g. **ESPFormClass::EVENT_ON_CHANGE** = 13, and **ESPFormClass::EVENT_ON_CLICK** = 1. 
 
 
 The following are the basic example to get and send data to text box of HTML document.
@@ -185,7 +187,7 @@ void setup()
   ESPForm.addFileData(index_html, "index.html");
 
   //Add html element event listener, id "text1" for onchange event
-  ESPForm.addElementEventListener("text1", EVENT_ON_CHANGE);
+  ESPForm.addElementEventListener("text1", ESPFormClass::EVENT_ON_CHANGE);
 
   //Start ESPForm's Webserver
   ESPForm.begin(formElementEventCallback, serverTimeoutCallback, serverTimeout, true);
@@ -245,7 +247,7 @@ See [Full Examples](/examples) for the usages, below are the screenshots of thes
 
 The MIT License (MIT)
 
-Copyright (c) 2020 K. Suwatchai (Mobizt)
+Copyright (c) 2021 K. Suwatchai (Mobizt)
 
 
 Permission is hereby granted, free of charge, to any person returning a copy of

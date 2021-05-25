@@ -7,6 +7,7 @@
 #######################################
 
 ESPForm	KEYWORD1
+ESPFormClass    KEYWORD1
 
 ###############################################
 # Methods and Functions for ESPForm (KEYWORD2)
@@ -19,6 +20,7 @@ addFileData	KEYWORD2
 addFile	KEYWORD2
 runScript	KEYWORD2
 setAP	KEYWORD2
+stopAP  KEYWORD2
 setIP	KEYWORD2
 startServer	KEYWORD2
 stopServer	KEYWORD2
@@ -39,6 +41,7 @@ getClientCount	KEYWORD2
 getElementCount	KEYWORD2
 setClock	KEYWORD2
 sdBegin	KEYWORD2
+sdMMCBegin  KEYWORD2
 
 #######################################
 # Struct (LITERAL1)
