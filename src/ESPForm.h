@@ -1,9 +1,9 @@
 #ifndef ESPFORM_VERSION
-#define ESPFORM_VERSION "1.0.2"
+#define ESPFORM_VERSION "1.0.3"
 #endif
 
 /*
- * The ESPForm for Arduino v 1.0.2
+ * The ESPForm for Arduino v 1.0.3
  * 
  * May 25, 2021
  * 
