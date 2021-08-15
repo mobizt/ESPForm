@@ -382,7 +382,7 @@ void serverTimeoutCallback()
 
     //If server timeout (no client connected within specific time)
 
-    Serial.println("MAIN:  Server Timeout");
+    Serial.println("MAIN:  Server timed out");
     Serial.println();
 
     //Load the config, try to reconnect wifi if WiFi config is avalailable, start the server again if WiFi is not connected

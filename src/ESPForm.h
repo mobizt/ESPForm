@@ -1,11 +1,11 @@
 #ifndef ESPFORM_VERSION
-#define ESPFORM_VERSION "1.0.3"
+#define ESPFORM_VERSION "1.0.4"
 #endif
 
 /*
- * The ESPForm for Arduino v 1.0.3
+ * The ESPForm for Arduino v 1.0.4
  * 
- * May 25, 2021
+ * August 15, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 

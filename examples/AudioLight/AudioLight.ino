@@ -39,7 +39,7 @@ void serverTimeoutCallback()
 
     //If server timeout (no client connected within specific time)
     Serial.println("***********************************");
-    Serial.println("Server Timeout");
+    Serial.println("Server timed out");
     Serial.println("***********************************");
     Serial.println();
 }

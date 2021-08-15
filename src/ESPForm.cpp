@@ -1,7 +1,7 @@
 /*
- * The ESPForm for Arduino v 1.0.3
+ * The ESPForm for Arduino v 1.0.4
  * 
- * May 25, 2021
+ * August 15, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -223,8 +223,6 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
     std::string s;
     appendP(s, espform_str_23);
     json.add(s.c_str(), *_form_config);
-    String js;
-    json.toString(js, false);
 
     if (storagetype == esp_form_storage_flash)
     {
@@ -235,7 +233,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
             return;
 
         _file = FLASH_FS.open(fileName, "w");
-        _file.print(js);
+        json.toString(_file);
         _file.close();
     }
     else if (storagetype == esp_form_storage_sd)
@@ -247,7 +245,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
             return;
 
         _file = SD_FS.open(fileName, FILE_WRITE);
-        _file.print(js);
+        json.toString(_file);
         _file.close();
     }
 }
@@ -265,7 +263,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
             return;
 
         _file = FLASH_FS.open(fileName, "r");
-        js.setJsonData(_file.readString());
+        js.readFrom(_file);
         _file.close();
     }
     else if (storagetype == esp_form_storage_sd)
@@ -277,7 +275,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
             return;
 
         _file = SD_FS.open(fileName, FILE_READ);
-        js.setJsonData(_file.readString());
+        js.readFrom(_file);
         _file.close();
     }
 
@@ -285,7 +283,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
     std::string s;
     appendP(s, espform_str_13);
     appendP(s, espform_str_23);
-    js.get(d, s.c_str());
+    js.get(d, s);
     if (d.success)
     {
         _form_config.reset();
@@ -298,7 +296,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
 ESPFormClass::HTMLElementItem ESPFormClass::getElementEventConfigItem(const String &id)
 {
 
-    FirebaseJsonData jsonData;
+    FirebaseJsonData result;
     bool res = false;
     std::string s;
     HTMLElementItem element;
@@ -308,27 +306,26 @@ ESPFormClass::HTMLElementItem ESPFormClass::getElementEventConfigItem(const Stri
     for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _form_config->get(jsonData, s.c_str());
-        if (jsonData.success)
+        _form_config->get(result, s);
+        if (result.success)
         {
-
-            if (id == jsonData.stringValue)
+            if (id == result.stringValue)
             {
                 element.id = id;
                 res = true;
                 getPath(1, k, s);
-                _form_config->get(jsonData, s.c_str());
-                if (jsonData.success)
+                _form_config->get(result, s);
+                if (result.success)
                 {
                     res &= true;
-                    element.event = (ESPFormEventType)jsonData.intValue;
+                    element.event = (ESPFormEventType)result.intValue;
                 }
                 getPath(2, k, s);
-                _form_config->get(jsonData, s.c_str());
-                if (jsonData.success)
+                _form_config->get(result, s);
+                if (result.success)
                 {
                     res &= true;
-                    element.value = jsonData.stringValue;
+                    element.value = result.to<String>();
                 }
                 element.success = res;
                 break;
@@ -341,7 +338,7 @@ ESPFormClass::HTMLElementItem ESPFormClass::getElementEventConfigItem(const Stri
 void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 {
 
-    FirebaseJsonData jsonData;
+    FirebaseJsonData result;
     std::string s;
 
     prepareConfig();
@@ -349,19 +346,19 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
     for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _form_config->get(jsonData, s.c_str());
-        if (jsonData.success)
+        _form_config->get(result, s);
+        if (result.success)
         {
-            if (element.id == jsonData.stringValue)
+            if (element.id == result.stringValue)
             {
                 if (element.event > 0)
                 {
                     getPath(1, k, s);
-                    _form_config->set(s.c_str(), (int)element.event);
+                    _form_config->set(s, (int)element.event);
                 }
 
                 getPath(2, k, s);
-                _form_config->set(s.c_str(), element.value);
+                _form_config->set(s, element.value);
                 break;
             }
         }
@@ -370,7 +367,7 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 
 void ESPFormClass::removeElementEventConfigItem(const String &id)
 {
-    FirebaseJsonData jsonData;
+    FirebaseJsonData result;
     std::string s;
 
     prepareConfig();
@@ -378,10 +375,10 @@ void ESPFormClass::removeElementEventConfigItem(const String &id)
     for (size_t k = 0; k < _form_config->size(); k++)
     {
         getPath(0, k, s);
-        _form_config->get(jsonData, s.c_str());
-        if (jsonData.success)
+        _form_config->get(result, s.c_str());
+        if (result.success)
         {
-            if (id == jsonData.stringValue)
+            if (id == result.stringValue)
             {
                 _form_config->remove(k);
                 break;
@@ -843,7 +840,7 @@ bool ESPFormClass::handleFileRead()
     else if (strcmp(path.c_str(), s5.c_str()) == 0)
     {
         String ap = "";
-        FirebaseJsonData jsonData;
+        FirebaseJsonData result;
         String id;
         int event = 0;
         String value;
@@ -858,19 +855,19 @@ bool ESPFormClass::handleFileRead()
         for (size_t k = 0; k < _form_config->size(); k++)
         {
             getPath(0, k, s);
-            _form_config->get(jsonData, s.c_str());
-            if (jsonData.success)
-                id = jsonData.stringValue;
+            _form_config->get(result, s);
+            if (result.success)
+                id = result.stringValue;
             getPath(1, k, s);
-            _form_config->get(jsonData, s.c_str());
-            if (jsonData.success)
-                event = jsonData.intValue;
+            _form_config->get(result, s);
+            if (result.success)
+                event = result.intValue;
             getPath(2, k, s);
-            _form_config->get(jsonData, s.c_str());
-            if (jsonData.success)
-                value = jsonData.stringValue;
+            _form_config->get(result, s);
+            if (result.success)
+                value = result.stringValue;
 
-            if (value.length() > 0 && jsonData.typeNum != FirebaseJson::JSON_NULL)
+            if (value.length() > 0 && result.typeNum != FirebaseJson::JSON_NULL)
                 ap += s2.c_str() + id + s3.c_str() + value + s4.c_str();
 
             char *a = intStr(event);
@@ -1061,29 +1058,29 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
     case WStype_TEXT:
 
         FirebaseJson json;
-        FirebaseJsonData jsonData;
+        FirebaseJsonData result;
         json.setJsonData((char *)payload);
         String type, id, value;
         uint8_t event = 0;
         std::string s, s2;
 
         appendP(s, espform_str_30, true);
-        json.get(jsonData, s.c_str());
-        if (jsonData.success)
-            event = jsonData.intValue;
+        json.get(result, s.c_str());
+        if (result.success)
+            event = result.intValue;
 
         appendP(s, espform_str_29, true);
-        json.get(jsonData, s.c_str());
-        if (jsonData.success)
-            type = jsonData.stringValue;
+        json.get(result, s.c_str());
+        if (result.success)
+            type = result.stringValue;
         appendP(s, espform_str_16, true);
-        json.get(jsonData, s.c_str());
-        if (jsonData.success)
-            id = jsonData.stringValue;
+        json.get(result, s.c_str());
+        if (result.success)
+            id = result.stringValue;
         appendP(s, espform_str_18, true);
-        json.get(jsonData, s.c_str());
-        if (jsonData.success)
-            value = jsonData.stringValue;
+        json.get(result, s.c_str());
+        if (result.success)
+            value = result.stringValue;
 
         appendP(s, espform_str_30, true);
         appendP(s2, espform_str_31, true);
