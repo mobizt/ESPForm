@@ -1,4 +1,4 @@
-# The ESPForm for Arduino v 1.0.4
+# The ESPForm for Arduino v 1.0.5
 
 
 The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
@@ -27,8 +27,30 @@ The supported devices are Espressif's ESP32 and ESP8266 MCUs.
  * ESP8266 MCU
 
 
+ ## PSRAM support in ESP32
 
-### The Basic Usages
+The library supports PSRAM in ESP32 via macro, in file **ESPFormFS.h**
+
+```
+#define ESPFORM_USE_PSRAM
+```
+
+To enable PSRAM in ESP32 module with on-board PSRAM chip, in Arduino IDE
+
+![Enable PSRAM in ESP32](media/images/ESP32-PSRAM.png)
+
+
+In PlatformIO in VSCode IDE, add the following build_flags in your project's platformio.ini file
+
+```ini
+build_flags = -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue
+```
+
+*When config the IDE or add the build flags to use PSRAM in the ESP32 dev boards that do not have on-board PSRAM chip, your device will be crashed (reset).
+
+
+
+## The Basic Usages
 
 
 Prepare your HTML,javascript, css and other resources files or data.
@@ -82,7 +104,7 @@ The following are the basic example to get and send data to text box of HTML doc
 
 ### Example Screenshot
 
-![Basic Example Screenshot](/src/media/basic_screenshot.png)
+![Basic Example Screenshot](media/images/basic_screenshot.png)
 
 ```C++
 
@@ -227,19 +249,19 @@ See [Full Examples](/examples) for the usages, below are the screenshots of thes
 
 ### The Knob Example Screenshot
 
-![Knob Example Screenshot](/src/media/knob_screenshot.png)
+![Knob Example Screenshot](media/images/knob_screenshot.png)
 
 
 
 ### The Chart Example Screenshot
 
-![Chrt Example Screenshot](/src/media/chart_screenshot.png)
+![Chrt Example Screenshot](media/images/chart_screenshot.png)
 
 
 
 ### The WiFi Example Screenshot
 
-![WiFi Example Screenshot](/src/media/wifi_screenshot.png)
+![WiFi Example Screenshot](media/images/wifi_screenshot.png)
 
 
 

@@ -199,7 +199,7 @@ void ESPFormClass::addElementEventListener(const String &id, ESPFormEventType ev
     prepareConfig();
 
     FirebaseJson json;
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_16);
     json.add(s.c_str(), id);
     appendP(s, espform_str_17, true);
@@ -220,7 +220,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
         return;
 
     FirebaseJson json;
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_23);
     json.add(s.c_str(), *_form_config);
 
@@ -280,7 +280,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
     }
 
     FirebaseJsonData d;
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_13);
     appendP(s, espform_str_23);
     js.get(d, s);
@@ -298,7 +298,7 @@ ESPFormClass::HTMLElementItem ESPFormClass::getElementEventConfigItem(const Stri
 
     FirebaseJsonData result;
     bool res = false;
-    std::string s;
+    MBSTRING s;
     HTMLElementItem element;
 
     prepareConfig();
@@ -339,7 +339,7 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 {
 
     FirebaseJsonData result;
-    std::string s;
+    MBSTRING s;
 
     prepareConfig();
 
@@ -368,7 +368,7 @@ void ESPFormClass::setElementEventConfigItem(HTMLElementItem &element)
 void ESPFormClass::removeElementEventConfigItem(const String &id)
 {
     FirebaseJsonData result;
-    std::string s;
+    MBSTRING s;
 
     prepareConfig();
 
@@ -401,7 +401,7 @@ void ESPFormClass::prepareConfig()
 
 String ESPFormClass::getElementEventString(ESPFormEventType event)
 {
-    std::string buf;
+    MBSTRING buf;
     switch (event)
     {
     case EVENT_UNDEFINED:
@@ -479,7 +479,7 @@ String ESPFormClass::getElementEventString(ESPFormEventType event)
 
 String ESPFormClass::getWiFiEncrytionTypeString(EncriptionType encType)
 {
-    std::string buf;
+    MBSTRING buf;
 
 #if defined(ESP32)
     switch (encType)
@@ -533,7 +533,7 @@ String ESPFormClass::getWiFiEncrytionTypeString(EncriptionType encType)
 
 void ESPFormClass::getElementContent(const char *id)
 {
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_19);
     s += id;
     appendP(s, espform_str_22);
@@ -549,7 +549,7 @@ void ESPFormClass::getElementContent(const char *id)
 
 void ESPFormClass::setElementContent(const char *id, const String &content)
 {
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_20);
     s += id;
     appendP(s, espform_str_21);
@@ -577,7 +577,7 @@ void ESPFormClass::runScript(const String &script)
     _web_socket_ptr->broadcastTXT(script.c_str(), script.length());
 }
 
-void ESPFormClass::getPath(uint8_t type, int index, std::string &buf)
+void ESPFormClass::getPath(uint8_t type, int index, MBSTRING &buf)
 {
     char *t = intStr(index);
     appendP(buf, espform_str_14, true);
@@ -691,7 +691,7 @@ void ESPFormClass::stopAP()
 void ESPFormClass::startDNSServer()
 {
 #ifdef ESP32
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_4);
     MDNS.begin(s.c_str());
 #elif defined(ESP8266)
@@ -714,7 +714,7 @@ void ESPFormClass::startWebServer()
 #ifdef ESP32
     _web_server_ptr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
 #elif defined(ESP8266)
-    std::string s;
+    MBSTRING s;
     appendP(s, espform_str_24);
     _web_server_ptr->on("/", std::bind(&ESPFormClass::handleFileRead, this));
 #endif
@@ -749,7 +749,7 @@ void ESPFormClass::handleNotFound()
         goLandingPage();
     else if (!handleFileRead())
     {
-        std::string s, s2;
+        MBSTRING s, s2;
         appendP(s, espform_str_7);
         appendP(s2, espform_str_38);
         _web_server_ptr->send(404, s.c_str(), s2.c_str());
@@ -776,7 +776,7 @@ void ESPFormClass::getMIME(const String &ext, String &mime)
 bool ESPFormClass::handleFileRead()
 {
     bool res = false;
-    std::string s1, s2, s3, s4, s5;
+    MBSTRING s1, s2, s3, s4, s5;
     appendP(s1, espform_str_13);
     appendP(s2, espform_str_12);
     String path = _web_server_ptr->uri();
@@ -808,7 +808,7 @@ bool ESPFormClass::handleFileRead()
 
     if (strcmp(path.c_str(), s3.c_str()) == 0)
     {
-        std::string filename;
+        MBSTRING filename;
         bool fvc = false;
         for (size_t i = 0; i < _file_info.size(); i++)
         {
@@ -844,7 +844,7 @@ bool ESPFormClass::handleFileRead()
         String id;
         int event = 0;
         String value;
-        std::string s, s2, s3, s4, s5, s6, s7;
+        MBSTRING s, s2, s3, s4, s5, s6, s7;
         appendP(s2, espform_str_32);
         appendP(s3, espform_str_33);
         appendP(s4, espform_str_34);
@@ -884,7 +884,7 @@ bool ESPFormClass::handleFileRead()
     }
     else
     {
-        std::string filename;
+        MBSTRING filename;
         String ext;
         String mime;
         for (size_t i = 0; i < _file_info.size(); i++)
@@ -975,7 +975,7 @@ bool ESPFormClass::handleFileRead()
 
 void ESPFormClass::goLandingPage()
 {
-    std::string s1, s2, s3;
+    MBSTRING s1, s2, s3;
     appendP(s1, espform_str_5);
     appendP(s2, espform_str_6);
     s2 += toIpString(_web_server_ptr->client().localIP()).c_str();
@@ -1062,7 +1062,7 @@ void ESPFormClass::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, 
         json.setJsonData((char *)payload);
         String type, id, value;
         uint8_t event = 0;
-        std::string s, s2;
+        MBSTRING s, s2;
 
         appendP(s, espform_str_30, true);
         json.get(result, s.c_str());
@@ -1301,7 +1301,7 @@ bool ESPFormClass::flashTest()
 
 bool ESPFormClass::sdTest(fs::File file)
 {
-    std::string filepath = "/sdtest01.txt";
+    MBSTRING filepath = "/sdtest01.txt";
 #if defined(CARD_TYPE_SD)
     if (!sdBegin(_sd_config.ss, _sd_config.sck, _sd_config.miso, _sd_config.mosi))
         return false;
@@ -1340,7 +1340,7 @@ bool ESPFormClass::sdTest(fs::File file)
 
     SD_FS.remove(filepath.c_str());
 
-    std::string().swap(filepath);
+    MBSTRING().swap(filepath);
 
     _sd_rdy = true;
 
@@ -1377,7 +1377,7 @@ char *ESPFormClass::intStr(int value)
     return buf;
 }
 
-void ESPFormClass::appendP(std::string &buf, PGM_P p, bool empty)
+void ESPFormClass::appendP(MBSTRING &buf, PGM_P p, bool empty)
 {
     if (empty)
         buf.clear();
@@ -1417,7 +1417,7 @@ void ESPFormClass::int_scanWiFi(WiFiInfo *result, WiFiScanResultItemCallback sca
             if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i]))
                 std::swap(indices[i], indices[j]);
 
-    std::string t;
+    MBSTRING t;
     for (uint8_t i = 0; i < netCount; i++)
     {
         if (indices[i] == -1)

@@ -1,11 +1,11 @@
 #ifndef ESPFORM_VERSION
-#define ESPFORM_VERSION "1.0.4"
+#define ESPFORM_VERSION "1.0.5"
 #endif
 
-/*
- * The ESPForm for Arduino v 1.0.4
+/**
+ * The ESPForm for Arduino v 1.0.5
  * 
- * August 15, 2021
+ * October 31, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -47,7 +47,6 @@
 #ifndef ESPFormClass_H
 #define ESPFormClass_H
 
-#include <debug.h>
 
 #ifdef ESP32
 #include <WiFi.h>
@@ -84,6 +83,13 @@
 #include <vector>
 #include <DNSServer.h>
 #include "webSockets/WebSocketsServer.h"
+
+#if defined(ESP32)
+#if defined(ESPFORM_USE_PSRAM)
+#define FIREBASEJSON_USE_PSRAM
+#endif
+#endif
+
 #include "json/FirebaseJson.h"
 #include "MIMEInfo.h"
 
@@ -799,8 +805,8 @@ public:
 private:
     typedef struct
     {
-        std::string name = "";
-        std::string path = "";
+        MBSTRING name;
+        MBSTRING path;
         const char *content = nullptr;
         bool gzip = false;
         uint32_t len = 0;
@@ -827,8 +833,8 @@ private:
     IPAddress _ip;
     IPAddress _gateway;
     IPAddress _subnet;
-    std::string _ap_ssid = "";
-    std::string _ap_psw = "";
+    MBSTRING _ap_ssid;
+    MBSTRING _ap_psw;
     bool _skip_self_ap = true;
     int _channel = 1;
     int _ssid_hidden = 0;
@@ -841,7 +847,7 @@ private:
     std::shared_ptr<WebServer> _web_server_ptr = nullptr;
     std::shared_ptr<WebSocketsServer> _web_socket_ptr = nullptr;
     TaskHandle_t _xTaskHandle = NULL;
-    std::string _taskName;
+    MBSTRING _taskName;
 #elif defined(ESP8266)
     std::shared_ptr<DNSServer> _dns_server_ptr;
     std::shared_ptr<ESP8266WebServer> _web_server_ptr;
@@ -865,7 +871,7 @@ private:
     unsigned long _last_recon_millis = 0;
     unsigned long _reccon_tmo = 10000;
 
-    void getPath(uint8_t type, int index, std::string &buf);
+    void getPath(uint8_t type, int index, MBSTRING &buf);
     void startAP();
     void startDNSServer();
     void startWebServer();
@@ -884,7 +890,7 @@ private:
     void delS(char *p);
     char *newS(size_t len);
     char *intStr(int value);
-    void appendP(std::string &buf, PGM_P p, bool empty = false);
+    void appendP(MBSTRING &buf, PGM_P p, bool empty = false);
     uint8_t getRSSIasQuality(int RSSI);
     bool reconnect();
     void prepareConfig();
