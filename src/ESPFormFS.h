@@ -29,15 +29,15 @@
  #define CARD_TYPE_SD_MMC 1 //For ESP32 SDMMC
  * 
 */
+
+#include <SD.h>
 #define DEFAULT_SD_FS SD
 #define CARD_TYPE_SD 1
 
 //For ESP32, format SPIFFS or FFat if mounting failed
 #define FORMAT_FLASH_IF_MOUNT_FAILED 1
 
-
-
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP8266)
 #define ESPFORM_USE_PSRAM
 #endif
 

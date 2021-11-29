@@ -1,7 +1,7 @@
 /*
- * The ESPForm for Arduino v 1.0.4
+ * The ESPForm for Arduino v 1.0.6
  * 
- * August 15, 2021
+ * November 29, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -226,6 +226,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
 
     if (storagetype == esp_form_storage_flash)
     {
+#if defined(FLASH_FS)
         if (!_flash_rdy)
             _flash_rdy = flashTest();
 
@@ -235,9 +236,11 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
         _file = FLASH_FS.open(fileName, "w");
         json.toString(_file);
         _file.close();
+#endif
     }
     else if (storagetype == esp_form_storage_sd)
     {
+#if defined(SD_FS)
         if (!_sd_rdy)
             _sd_rdy = sdTest(_file);
 
@@ -247,6 +250,7 @@ void ESPFormClass::saveElementEventConfig(const String &fileName, ESPFormStorage
         _file = SD_FS.open(fileName, FILE_WRITE);
         json.toString(_file);
         _file.close();
+#endif
     }
 }
 
@@ -256,6 +260,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
 
     if (storagetype == esp_form_storage_flash)
     {
+#if defined(FLASH_FS)
         if (!_flash_rdy)
             _flash_rdy = flashTest();
 
@@ -265,9 +270,11 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
         _file = FLASH_FS.open(fileName, "r");
         js.readFrom(_file);
         _file.close();
+#endif
     }
     else if (storagetype == esp_form_storage_sd)
     {
+#if defined(SD_FS)
         if (!_sd_rdy)
             _sd_rdy = sdTest(_file);
 
@@ -277,6 +284,7 @@ void ESPFormClass::loadElementEventConfig(const String &fileName, ESPFormStorage
         _file = SD_FS.open(fileName, FILE_READ);
         js.readFrom(_file);
         _file.close();
+#endif
     }
 
     FirebaseJsonData d;
@@ -906,6 +914,7 @@ bool ESPFormClass::handleFileRead()
                     FirebaseJsonData d;
                     if (_file_info[i].storageType == esp_form_storage_flash)
                     {
+#if defined(FLASH_FS)
                         if (!_flash_rdy)
                             _flash_rdy = flashTest();
                         if (_flash_rdy)
@@ -918,9 +927,11 @@ bool ESPFormClass::handleFileRead()
                                 res = true;
                             }
                         }
+#endif
                     }
                     else if (_file_info[i].storageType == esp_form_storage_sd)
                     {
+#if defined(SD_FS)
                         if (!_sd_rdy)
                             _sd_rdy = sdTest(_file);
                         if (_sd_rdy)
@@ -933,6 +944,7 @@ bool ESPFormClass::handleFileRead()
                                 res = true;
                             }
                         }
+#endif
                     }
                 }
                 else if (_file_info[i].content && _file_info[i].path.length() == 0)
@@ -1125,7 +1137,8 @@ void ESPFormClass::serverRun()
 
     static ESPFormClass *_this = this;
 
-    TaskFunction_t taskCode = [](void *param) {
+    TaskFunction_t taskCode = [](void *param)
+    {
         for (;;)
         {
             if (!_idleTimeoutInfo[objIndex - 1].get()._serverRun)
@@ -1206,7 +1219,8 @@ void ESPFormClass::serverRun()
 #if defined(ESP8266)
 void ESPFormClass::set_scheduled_callback(callback_function_t callback)
 {
-    _callback_function = std::move([callback]() { schedule_function(callback); });
+    _callback_function = std::move([callback]()
+                                   { schedule_function(callback); });
     _callback_function();
 }
 #endif
@@ -1236,6 +1250,7 @@ bool ESPFormClass::reconnect()
 
 bool ESPFormClass::sdBegin(int8_t ss, int8_t sck, int8_t miso, int8_t mosi)
 {
+#if defined(SD_FS)
 #if defined(CARD_TYPE_SD)
     _sd_config.sck = sck;
     _sd_config.miso = miso;
@@ -1256,12 +1271,15 @@ bool ESPFormClass::sdBegin(int8_t ss, int8_t sck, int8_t miso, int8_t mosi)
         return SD_FS.begin(SD_CS_PIN);
 #endif
 #endif
+#endif
+    return false;
 }
 
 #if defined(ESP32)
 #if defined(CARD_TYPE_SD_MMC)
 bool ESPFormClass::sdBegin(const char *mountpoint, bool mode1bit, bool format_if_mount_failed)
 {
+#if defined(SD_FS)
     if (config)
     {
         _sd_config.sd_mmc_mountpoint = mountpoint;
@@ -1269,12 +1287,15 @@ bool ESPFormClass::sdBegin(const char *mountpoint, bool mode1bit, bool format_if
         _sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
     }
     return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
+#endif
+    return false;
 }
 #endif
 #endif
 
 bool ESPFormClass::sdMMCBegin(const char *mountpoint, bool mode1bit, bool format_if_mount_failed)
 {
+#if defined(SD_FS)
 #if defined(ESP32)
 #if defined(CARD_TYPE_SD_MMC)
     _sd_config.sd_mmc_mountpoint = mountpoint;
@@ -1283,11 +1304,13 @@ bool ESPFormClass::sdMMCBegin(const char *mountpoint, bool mode1bit, bool format
     return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
 #endif
 #endif
+#endif
     return false;
 }
 
 bool ESPFormClass::flashTest()
 {
+#if defined(FLASH_FS)
 #if defined(ESP32)
     if (FORMAT_FLASH == 1)
         _flash_rdy = FLASH_FS.begin(true);
@@ -1297,10 +1320,13 @@ bool ESPFormClass::flashTest()
     _flash_rdy = FLASH_FS.begin();
 #endif
     return _flash_rdy;
+#endif
+    return false;
 }
 
 bool ESPFormClass::sdTest(fs::File file)
 {
+#if defined(SD_FS)
     MBSTRING filepath = "/sdtest01.txt";
 #if defined(CARD_TYPE_SD)
     if (!sdBegin(_sd_config.ss, _sd_config.sck, _sd_config.miso, _sd_config.mosi))
@@ -1345,6 +1371,8 @@ bool ESPFormClass::sdTest(fs::File file)
     _sd_rdy = true;
 
     return true;
+#endif
+    return false;
 }
 
 char *ESPFormClass::strP(PGM_P pgm)

@@ -8,5 +8,5 @@
     },
     "frameworks": "arduino",
     "platforms": "esp32, esp8266",
-    "version": "1.0.5"
+    "version": "1.0.6"
 }

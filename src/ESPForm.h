@@ -1,11 +1,11 @@
 #ifndef ESPFORM_VERSION
-#define ESPFORM_VERSION "1.0.5"
+#define ESPFORM_VERSION "1.0.6"
 #endif
 
 /**
- * The ESPForm for Arduino v 1.0.5
+ * The ESPForm for Arduino v 1.0.6
  * 
- * October 31, 2021
+ * November 29, 2021
  * 
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
  * 
@@ -79,12 +79,12 @@
 
 #include "ESPFormFS.h"
 
-#include <SD.h>
+
 #include <vector>
 #include <DNSServer.h>
 #include "webSockets/WebSocketsServer.h"
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP8266)
 #if defined(ESPFORM_USE_PSRAM)
 #define FIREBASEJSON_USE_PSRAM
 #endif
@@ -95,8 +95,14 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#ifdef DEFAULT_FLASH_FS
 #define FLASH_FS DEFAULT_FLASH_FS
+#endif
+
+#ifdef DEFAULT_SD_FS
 #define SD_FS DEFAULT_SD_FS
+#endif
+
 #if defined(ESP32)
 #define FORMAT_FLASH FORMAT_FLASH_IF_MOUNT_FAILED
 #endif
