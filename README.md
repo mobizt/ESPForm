@@ -27,17 +27,13 @@ The supported devices are Espressif's ESP32 and ESP8266 MCUs.
  * ESP8266 MCU
 
 
- ## PSRAM support in ESP32
 
-The library supports PSRAM in ESP32 via macro, in file **ESPFormFS.h**
+ ### Use SRAM/PSRAM in ESP32 and ESP8266
 
-```
-#define ESPFORM_USE_PSRAM
-```
 
 To enable PSRAM in ESP32 module with on-board PSRAM chip, in Arduino IDE
 
-![Enable PSRAM in ESP32](media/images/ESP32-PSRAM.png)
+![Enable PSRAM in ESP32](/media/images/ESP32-PSRAM.png)
 
 
 In PlatformIO in VSCode IDE, add the following build_flags in your project's platformio.ini file
@@ -47,6 +43,46 @@ build_flags = -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue
 ```
 
 *When config the IDE or add the build flags to use PSRAM in the ESP32 dev boards that do not have on-board PSRAM chip, your device will be crashed (reset).
+
+
+In ESP8266, to use external Heap from 1 Mbit SRAM 23LC1024, choose the MMU **option 5**, 128K External 23LC1024.
+
+![MMU VM 128K](/media/images/ESP8266_VM.png)
+
+To use external Heap from PSRAM, choose the MMU **option 6**, 1M External 64 MBit PSRAM.
+
+In PlatformIO, **PIO_FRAMEWORK_ARDUINO_MMU_EXTERNAL_128K** or **PIO_FRAMEWORK_ARDUINO_MMU_EXTERNAL_1024K** build flag should be assigned in platformio.ini.
+
+```ini
+[env:d1_mini]
+platform = espressif8266
+build_flags = -D PIO_FRAMEWORK_ARDUINO_MMU_EXTERNAL_128K
+board = d1_mini
+framework = arduino
+monitor_speed = 115200
+```
+
+The connection between SRAM/PSRAM and ESP8266
+
+```
+23LC1024/ESP-PSRAM64                ESP8266
+
+CS (Pin 1)                          GPIO15
+SCK (Pin 6)                         GPIO14
+MOSI (Pin 5)                        GPIO13
+MISO (Pin 2)                        GPIO12
+/HOLD (Pin 7 on 23LC1024 only)      3V3
+Vcc (Pin 8)                         3V3
+Vcc (Pin 4)                         GND
+```
+
+
+To use SRAM/PSRAM in this library, the macro in file [**ESPFormFS.h**](src/ESPFormFS.h) was set.
+
+```cpp
+#define ESPFORM_USE_PSRAM
+```
+
 
 
 

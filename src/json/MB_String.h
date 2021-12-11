@@ -115,14 +115,17 @@ public:
     {
         return equals(rhs);
     }
+
     unsigned char operator==(const char *cstr) const
     {
         return equals(cstr);
     }
+
     unsigned char operator!=(const MB_String &rhs) const
     {
         return !equals(rhs);
     }
+
     unsigned char operator!=(const char *cstr) const
     {
         return !equals(cstr);
@@ -418,6 +421,7 @@ public:
                 }
             }
         }
+
         return str;
     }
 
@@ -694,6 +698,7 @@ public:
     static const size_t npos = -1;
 
 private:
+
     size_t getReservedLen(size_t len)
     {
         int blen = len + 1;
