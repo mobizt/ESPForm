@@ -28,7 +28,7 @@ The supported devices are Espressif's ESP32 and ESP8266 MCUs.
 
 
 
- ### Use SRAM/PSRAM in ESP32 and ESP8266
+ ## Use SRAM/PSRAM in ESP32 and ESP8266
 
 
 To enable PSRAM in ESP32 module with on-board PSRAM chip, in Arduino IDE
