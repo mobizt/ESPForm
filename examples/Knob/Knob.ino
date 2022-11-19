@@ -78,15 +78,15 @@ void setup()
   Serial.println(WiFi.localIP());
   Serial.println();
 
-  //FLASH_FS is defined in ESPFormFS.h
+  //DEFAULT_FLASH_FS is defined in ESPFormFS.h
 #if defined(ESP32)
-  FLASH_FS.begin(true);
+  DEFAULT_FLASH_FS.begin(true);
 #elif defined(ESP8266)
-  FLASH_FS.begin();
+  DEFAULT_FLASH_FS.begin();
 #endif
 
   //Element Event Config existed?
-  if (!FLASH_FS.exists("/knob-test.json"))
+  if (!DEFAULT_FLASH_FS.exists("/knob-test.json"))
   {
 
     //Add html element event listener, id "knob1" for onchange event

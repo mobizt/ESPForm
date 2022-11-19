@@ -1,4 +1,4 @@
-# The ESPForm for Arduino v 1.0.6
+# The ESPForm for Arduino v 1.0.7
 
 
 The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
@@ -305,7 +305,7 @@ See [Full Examples](/examples) for the usages, below are the screenshots of thes
 
 The MIT License (MIT)
 
-Copyright (c) 2021 K. Suwatchai (Mobizt)
+Copyright (c) 2022 K. Suwatchai (Mobizt)
 
 
 Permission is hereby granted, free of charge, to any person returning a copy of

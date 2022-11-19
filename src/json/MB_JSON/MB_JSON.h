@@ -1,9 +1,11 @@
 /*
-  MB_JSON.h v1.0.0 based on the modified version of cJSON.h v1.7.14 (Sept 3, 2020)
-  
-  Created August 15, 2021
+  MB_JSON.h v1.0.1 based on the modified version of cJSON.h v1.7.14 (Sept 3, 2020)
 
-  Copyright (c) 2021 Mobizt (K. Suwatchai)
+  All original static cJSON functions and static variables will be prefixed with MB_JSON_.
+  
+  Created December 20, 2022
+
+  Copyright (c) 2022 Mobizt (K. Suwatchai)
 
   Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 

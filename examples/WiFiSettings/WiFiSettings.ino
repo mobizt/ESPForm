@@ -148,15 +148,15 @@ bool loadConfig()
 void deleteConfigFile(const String &filename)
 {
     Serial.println("MAIN:  Delete config file...");
-    //FLASH_FS is defined in ESPFormFS.h
+    //DEFAULT_FLASH_FS is defined in ESPFormFS.h
 #if defined(ESP32)
-    FLASH_FS.begin(true);
+    DEFAULT_FLASH_FS.begin(true);
 #elif defined(ESP8266)
-    FLASH_FS.begin();
+    DEFAULT_FLASH_FS.begin();
 #endif
 
-    if (FLASH_FS.exists(filename))
-        FLASH_FS.remove(filename);
+    if (DEFAULT_FLASH_FS.exists(filename))
+        DEFAULT_FLASH_FS.remove(filename);
 
     Serial.println("MAIN:  Success");
     Serial.println();
@@ -166,14 +166,14 @@ bool loadWiFiConfig(const String &filename)
 {
 
     Serial.print("MAIN:  Load WiFi config...");
-    //FLASH_FS is defined in ESPFormFS.h
+    //DEFAULT_FLASH_FS is defined in ESPFormFS.h
 #if defined(ESP32)
-    FLASH_FS.begin(true);
+    DEFAULT_FLASH_FS.begin(true);
 #elif defined(ESP8266)
-    FLASH_FS.begin();
+    DEFAULT_FLASH_FS.begin();
 #endif
 
-    if (!FLASH_FS.exists(filename))
+    if (!DEFAULT_FLASH_FS.exists(filename))
     {
         Serial.println(" file is not existed");
         //Add new config.

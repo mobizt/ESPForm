@@ -3,50 +3,49 @@
 #endif
 
 /**
- * The ESPForm for Arduino v 1.0.6
- * 
- * November 29, 2021
- * 
+ * The ESPForm for Arduino v 1.0.7
+ *
+ * November 19, 2022
+ *
  * The simple HTML Form Elements data interchange library for ESP32/ESP8266 through the Webserver.
- * 
+ *
  * This allows user to send and receive the HTML form elements to/from device (ESP32/ESP8266).
- * 
+ *
  * The supported HTML Form Elements are input, select, option, textarea, radio, checkbox and button.
- * 
+ *
  * Thesse HTML form elements can add the eventlistener to send the data based on events to the device (ESP32/ESP8266).
- * 
+ *
  * The supported devices are Espressif's ESP32 and ESP8266 MCUs.
- * 
- * 
+ *
+ *
  * This library based on the Wrbsocket library from Markus Sattler with some modification to proper working with BearSSL WiFi client for ESP8266.
- * 
+ *
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
- * 
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ *
+ *
  * Permission is hereby granted, free of charge, to any person returning a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
 #include <Arduino.h>
 
 #ifndef ESPFormClass_H
 #define ESPFormClass_H
-
 
 #ifdef ESP32
 #include <WiFi.h>
@@ -79,7 +78,6 @@
 
 #include "ESPFormFS.h"
 
-
 #include <vector>
 #include <DNSServer.h>
 #include "webSockets/WebSocketsServer.h"
@@ -90,21 +88,14 @@
 #endif
 #endif
 
-#include "json/FirebaseJson.h"
+#include "mbfs/MB_FS.h"
 #include "MIMEInfo.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#ifdef DEFAULT_FLASH_FS
-#define FLASH_FS DEFAULT_FLASH_FS
-#endif
 
-#ifdef DEFAULT_SD_FS
-#define SD_FS DEFAULT_SD_FS
-#endif
-
-#if defined(ESP32)
-#define FORMAT_FLASH FORMAT_FLASH_IF_MOUNT_FAILED
+#ifndef ESP_DEFAULT_TS
+#define ESP_DEFAULT_TS 1618971013
 #endif
 
 static const char espform_str_1[] PROGMEM = "\r\n<script src=\"espform.js\"></script>\r\n";
@@ -618,22 +609,22 @@ public:
     ~ESPFormClass();
 
     /** Terminate the web server and free resources.
-    */
+     */
     void terminateServer();
 
     /** Get the number of HTML resource files and data (.html, .css, .js...) added for webpage rendering.
      * @return - The number or resources that added and use for webpage.
-    */
+     */
     size_t getFileCount();
 
     /** Delete all HTML resource files that added for webpage rendering.
-    */
+     */
     void deleteAllFiles();
 
     /** Add the HTML resource data in the form of raw string from SPIFFS (PROGMEM) for webpage rendering.
      * @param content The PROGMEM (constant char array) data.
      * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
-    */
+     */
     void addFileData(PGM_P content, const char *fileName);
 
     /** Add the HTML resource data in the form of byte array w/wo compression from SPIFFS (PROGMEM) for webpage rendering.
@@ -641,19 +632,19 @@ public:
      * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
      * @param length The length of data.
      * @param gzip The gzip compression option. Set to true if the array data is the gzip compressed data.
-    */
+     */
     void addFileData(const uint8_t *content, const char *fileName, size_t length, bool gzip);
 
     /** Add the HTML resource file from SPIFFS or SD/microSD for webpage rendering.
      * @param fileName The name of resource file (constant char array) in the form of URI e.g., /image.png.
      * @param filePath The full file path in SPIFFS or SD card.
      * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
-    */
+     */
     void addFile(const char *fileName, const char *filePath, ESPFormStorageType storagetype);
 
     /** Run the javascript in the client's browser.
      * @param script The string that represents the variables, objcts, array and functions in javascript.
-    */
+     */
     void runScript(const String &script);
 
     /** Set the Soft AP configuration.
@@ -662,26 +653,26 @@ public:
      * @param channel The Soft AP's channel.
      * @param ssid_hidden The option to show or hide the SSID for clients.
      * @param max_connection The maximum clients to connected (default value is 4).
-    */
+     */
     void setAP(const char *ssid, const char *psw, int channel = 1, int ssid_hidden = 0, int max_connection = 4);
 
     /** Stop Access Point.
-    */
+     */
     void stopAP();
 
     /** Set the Soft AP static IPs.
      * @param local_ip The Soft AP's fixed IP.
      * @param gateway The Soft AP's default gateway IP.
      * @param subnet The Soft AP's subnet mask.
-    */
+     */
     void setIP(IPAddress local_ip, IPAddress gateway, IPAddress subnet);
 
     /** Start the web server.
-    */
+     */
     void startServer();
 
     /** Stop the web server.
-    */
+     */
     void stopServer();
 
     /** Initiate the library with callback functions and debug enable option.
@@ -689,82 +680,82 @@ public:
      * @param timeoutCallback The server timeout callback function when no clients connected to device within the specific duration.
      * @param timeout The server timeout duration.
      * @param debug The debug enable option.
-    */
+     */
     void begin(ElementEventCallback eventCallback, IdleTimeoutCallback timeoutCallback = nullptr, unsigned long timeout = 600000, bool debug = false);
 
     /** Add or register the HTML Form Element's event.
      * @param id The id of HTML Form Element (id attribute).
      * @param event The number of ESPFormEventType enumeration e.g. EVENT_ON_CLICK = 1, EVENT_ON_DBLCLICK = 2, and EVENT_ON_MOUSEDOWN = 3.
      * @param defaultValue The default value of HTML Form Element.
-    */
+     */
     void addElementEventListener(const String &id, ESPFormEventType event, const char *defaultValue = NULL);
 
     /** Save the HTML Form Element's event items and their value as file (json format).
      * @param fileName The file name to save.
      * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
-    */
+     */
     void saveElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
 
     /** Load the HTML Form Element's event items and their value from file
      * @param fileName The file name to read.
      * @param storagetype The type of storage of file e.g., esp_form_storage_flash or esp_form_storage_sd.
-    */
+     */
     void loadElementEventConfig(const String &fileName, ESPFormStorageType storagetype);
 
     /** Read or get a HTML Form Element item value that loaed from file or added with function addElementEventListener.
      * @param id The id of item.
      * @return HTMLElementItem type data. The HTMLElementItem data comprises of id, event, value, type and success properties.
-     * 
+     *
      * The id property is the HTML Form Element id attribute.
      * The value property is the HTML Form Element value or innerText attribute (depends on type of HTML element).
      * The type is the types of data e.g event (HTML Form Element event trigged) and get (device requests the value from HTML Form Element).
      * The event property is the name of HTML Form Element events e.g. onchange, onsubmit and onclick.
      * The event property value is the number of ESPFormEventType enumeration e.g. **EVENT_ON_CHANGE** = 13, and **EVENT_ON_CLICK** = 1.
      * The success property is the boolean value that sets to true if the id of item or HTML Form Element found in the config file or has been added with addElementEventListener.
-    */
+     */
     ESPFormClass::HTMLElementItem getElementEventConfigItem(const String &id);
 
     /** Set the HTML Form Element items (locally in device).
      * @param element - The HTMLElementItem type data that comprises of id, event, value, type and success properties.
      * Required save to file to save changes.
-    */
+     */
     void setElementEventConfigItem(HTMLElementItem &element);
 
     /** Remove the HTML Form Element items (locally in device).
      * @param id The id of the HTML Form Element.
      * Required save to file to save changes.
-    */
+     */
     void removeElementEventConfigItem(const String &id);
 
     /** Read or get a HTML Form Element value from client.
      * @param id The id of the HTML Form Element.
      * The returning value will receive by the event callback function with HTMLElementItem which its type is 'get'.
-    */
+     */
     void getElementContent(const char *id);
 
     /** Set or change a HTML Form Element value (local item and client element values changed).
      * @param id The id of the HTML Form Element.
      * @param id The content or value to set.
      * Required save to file to save changes.
-    */
+     */
     void setElementContent(const char *id, const String &content);
 
     /** Clear all HTML Form Element in config or added with addElementEventListener.
      * Required save to file to save changes.
-    */
+     */
     void clearElementEventConfig();
 
     /** Get the HTML Form Element Event (ESPFormEventType) as string.
      * @param event The ESPFormEventType enumeration value.
      * @return String of event.
-    */
+     */
     String getElementEventString(ESPFormEventType event);
 
     /** Get the WiFi encryption method (EncriptionType) as string.
      * @param encType The EncriptionType enumeration value.
      * @return String of encType.
      * The EncriptionType is the name of wifi_auth_mode_t (ESP32) or wl_enc_type (ESP8266);
-    */
+     */
     String getWiFiEncrytionTypeString(EncriptionType encType);
 
     /** Scan WiFi network and get the result as WiFiInfo type data.
@@ -772,75 +763,111 @@ public:
      * NetworkInfo data i.e. ssid, encType, channel and quality.
      * @param max The maximum network list in the scan result.
      * @param showHidden The option to inclued the hidden netwok.
-    */
+     */
     void scanWiFi(WiFiScanResultItemCallback scanCallback, uint8_t max = 10, bool showHidden = false);
 
     /** Get the number of connected clients at the present.
      * @return Number of clients.
-    */
+     */
     size_t getClientCount();
 
     /** Get the HTML Form Element numbers that loaded or added.
      * @return The number of HTML Form Element.
-    */
+     */
     size_t getElementCount();
 
     /** Set the device time via NTP server.
      * @param offset The GMT offset.
      * @return bool status indicates the success of operation.
-    */
+     */
     bool setClock(float offset);
 
-    /** SD card config with GPIO pins.
+#if defined(MBFS_SD_FS) && defined(MBFS_CARD_TYPE_SD)
+
+    /** Initiate SD card with SPI port configuration.
+     *
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sck SPI Clock pin.
+     * @param miso SPI MISO pin.
+     * @param mosi SPI MOSI pin.
+     * @param frequency The SPI frequency
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1, uint32_t frequency = 4000000);
+
+#if defined(ESP8266)
+
+    /** Initiate SD card with SD FS configurations (ESP8266 only).
+     *
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sdFSConfig The pointer to SDFSConfig object (ESP8266 only).
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(SDFSConfig *sdFSConfig);
+
+#endif
+
+#if defined(ESP32)
+    /** Initiate SD card with chip select and SPI configuration (ESP32 only).
+     *
+     * @param ss SPI Chip/Slave Select pin.
+     * @param spiConfig The pointer to SPIClass object for SPI configuartion.
+     * @param frequency The SPI frequency.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(int8_t ss, SPIClass *spiConfig = nullptr, uint32_t frequency = 4000000);
+#endif
+
+#if defined(MBFS_ESP32_SDFAT_ENABLED) || defined(MBFS_SDFAT_ENABLED)
+    /** Initiate SD card with SdFat SPI and pins configurations (with SdFat included only).
+     *
+     * @param sdFatSPIConfig The pointer to SdSpiConfig object for SdFat SPI configuration.
      * @param ss SPI Chip/Slave Select pin.
      * @param sck SPI Clock pin.
      * @param miso SPI MISO pin.
      * @param mosi SPI MOSI pin.
      * @return Boolean type status indicates the success of the operation.
-    */
-    bool sdBegin(int8_t ss, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1);
+     */
+    bool sdBegin(SdSpiConfig *sdFatSPIConfig, int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1);
 
+    /** Initiate SD card with SdFat SDIO configuration (with SdFat included only).
+     *
+     * @param sdFatSDIOConfig The pointer to SdioConfig object for SdFat SDIO configuration.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(SdioConfig *sdFatSDIOConfig);
+
+#endif
+
+#endif
+
+#if defined(ESP32) && defined(MBFS_SD_FS) && defined(MBFS_CARD_TYPE_SD_MMC)
     /** Initialize the SD_MMC card (ESP32 only).
+     *
      * @param mountpoint The mounting point.
      * @param mode1bit Allow 1 bit data line (SPI mode).
      * @param format_if_mount_failed Format SD_MMC card if mount failed.
      * @return The boolean value indicates the success of operation.
-    */
+     */
     bool sdMMCBegin(const char *mountpoint = "/sdcard", bool mode1bit = false, bool format_if_mount_failed = false);
+#endif
 
 private:
     typedef struct
     {
-        MBSTRING name;
-        MBSTRING path;
+        MB_String name;
+        MB_String path;
         const char *content = nullptr;
         bool gzip = false;
         uint32_t len = 0;
         ESPFormStorageType storageType = esp_form_storage_flash;
     } file_content_info_t;
 
-    struct sd_config_info_t
-    {
-        int sck = -1;
-        int miso = -1;
-        int mosi = -1;
-        int ss = -1;
-        const char *sd_mmc_mountpoint = "";
-        bool sd_mmc_mode1bit = false;
-        bool sd_mmc_format_if_mount_failed = false;
-    };
-
-    struct sd_config_info_t _sd_config;
-
-    bool _sd_rdy = false;
-    bool _flash_rdy = false;
-    bool _sd_used = false;
-
     IPAddress _ip;
     IPAddress _gateway;
     IPAddress _subnet;
-    MBSTRING _ap_ssid;
-    MBSTRING _ap_psw;
+    MB_String _ap_ssid;
+    MB_String _ap_psw;
     bool _skip_self_ap = true;
     int _channel = 1;
     int _ssid_hidden = 0;
@@ -853,7 +880,7 @@ private:
     std::shared_ptr<WebServer> _web_server_ptr = nullptr;
     std::shared_ptr<WebSocketsServer> _web_socket_ptr = nullptr;
     TaskHandle_t _xTaskHandle = NULL;
-    MBSTRING _taskName;
+    MB_String _taskName;
 #elif defined(ESP8266)
     std::shared_ptr<DNSServer> _dns_server_ptr;
     std::shared_ptr<ESP8266WebServer> _web_server_ptr;
@@ -870,14 +897,18 @@ private:
     callback_function_t _callback_function = nullptr;
 #endif
     bool _debug = false;
-    File _file;
     bool _ap_started = false;
+    MB_FS _mbfs;
     idle_timeout_t _idle_to;
+    time_t _ts = 0;
+    bool _esp_form_clock_rdy = false;
+    bool _esp_form_clock_synched = false;
+    float _esp_form_gmt_offset = 0;
 
     unsigned long _last_recon_millis = 0;
     unsigned long _reccon_tmo = 10000;
 
-    void getPath(uint8_t type, int index, MBSTRING &buf);
+    void getPath(uint8_t type, int index, MB_String &buf);
     void startAP();
     void startDNSServer();
     void startWebServer();
@@ -890,13 +921,6 @@ private:
     String toIpString(IPAddress ip);
     void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t lenght);
     void serverRun();
-    bool sdTest(fs::File file);
-    bool flashTest();
-    char *strP(PGM_P pgm);
-    void delS(char *p);
-    char *newS(size_t len);
-    char *intStr(int value);
-    void appendP(MBSTRING &buf, PGM_P p, bool empty = false);
     uint8_t getRSSIasQuality(int RSSI);
     bool reconnect();
     void prepareConfig();
@@ -904,6 +928,8 @@ private:
 #if defined(ESP8266)
     void set_scheduled_callback(callback_function_t callback);
 #endif
+    time_t getTime();
+    bool syncClock(float gmtOffset);
 };
 
 class WiFiInfo
